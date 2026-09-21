@@ -1,0 +1,1938 @@
+{
+  "components": {
+    "schemas": {
+      "Alert": {
+        "properties": {
+          "alert_id": {
+            "title": "Alert Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/AlertEvidence"
+          },
+          "plate": {
+            "title": "Plate",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "trajectory_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Trajectory Ids",
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "clone",
+              "impossible_travel",
+              "anomaly"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alert_id",
+          "type",
+          "severity",
+          "created_at",
+          "plate",
+          "trajectory_ids",
+          "summary",
+          "evidence"
+        ],
+        "title": "Alert",
+        "type": "object"
+      },
+      "AlertEvidence": {
+        "properties": {
+          "appearance_distance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appearance Distance"
+          },
+          "delta_t_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta T S"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M"
+          },
+          "min_required_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Required S"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PathPoint"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points"
+          }
+        },
+        "title": "AlertEvidence",
+        "type": "object"
+      },
+      "AnalyticsSummary": {
+        "properties": {
+          "active_alerts": {
+            "title": "Active Alerts",
+            "type": "integer"
+          },
+          "mean_events_per_trajectory": {
+            "title": "Mean Events Per Trajectory",
+            "type": "number"
+          },
+          "mean_trip_duration_s": {
+            "title": "Mean Trip Duration S",
+            "type": "number"
+          },
+          "n_events": {
+            "title": "N Events",
+            "type": "integer"
+          },
+          "n_trajectories": {
+            "title": "N Trajectories",
+            "type": "integer"
+          },
+          "plate_repair_rate": {
+            "title": "Plate Repair Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "n_events",
+          "n_trajectories",
+          "mean_trip_duration_s",
+          "mean_events_per_trajectory",
+          "plate_repair_rate",
+          "active_alerts"
+        ],
+        "title": "AnalyticsSummary",
+        "type": "object"
+      },
+      "Camera": {
+        "properties": {
+          "bearing_deg": {
+            "title": "Bearing Deg",
+            "type": "number"
+          },
+          "camera_id": {
+            "title": "Camera Id",
+            "type": "string"
+          },
+          "is_border": {
+            "title": "Is Border",
+            "type": "boolean"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "camera_id",
+          "name",
+          "lat",
+          "lon",
+          "node_id",
+          "bearing_deg",
+          "is_border"
+        ],
+        "title": "Camera",
+        "type": "object"
+      },
+      "CameraStats": {
+        "properties": {
+          "bearing_deg": {
+            "title": "Bearing Deg",
+            "type": "number"
+          },
+          "camera_id": {
+            "title": "Camera Id",
+            "type": "string"
+          },
+          "events_total": {
+            "title": "Events Total",
+            "type": "integer"
+          },
+          "is_border": {
+            "title": "Is Border",
+            "type": "boolean"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "volume_last_hour": {
+            "title": "Volume Last Hour",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "camera_id",
+          "name",
+          "lat",
+          "lon",
+          "node_id",
+          "bearing_deg",
+          "is_border",
+          "events_total",
+          "volume_last_hour"
+        ],
+        "title": "CameraStats",
+        "type": "object"
+      },
+      "City": {
+        "properties": {
+          "cameras": {
+            "items": {
+              "$ref": "#/components/schemas/Camera"
+            },
+            "title": "Cameras",
+            "type": "array"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/RoadEdge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/RoadNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "nodes",
+          "edges",
+          "cameras"
+        ],
+        "title": "City",
+        "type": "object"
+      },
+      "Corridor": {
+        "properties": {
+          "congestion_index": {
+            "title": "Congestion Index",
+            "type": "number"
+          },
+          "free_flow_s": {
+            "title": "Free Flow S",
+            "type": "number"
+          },
+          "from_camera": {
+            "title": "From Camera",
+            "type": "string"
+          },
+          "median_travel_s": {
+            "title": "Median Travel S",
+            "type": "number"
+          },
+          "n_trips": {
+            "title": "N Trips",
+            "type": "integer"
+          },
+          "p90_travel_s": {
+            "title": "P90 Travel S",
+            "type": "number"
+          },
+          "to_camera": {
+            "title": "To Camera",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_camera",
+          "to_camera",
+          "n_trips",
+          "median_travel_s",
+          "p90_travel_s",
+          "free_flow_s",
+          "congestion_index"
+        ],
+        "title": "Corridor",
+        "type": "object"
+      },
+      "EvalReports": {
+        "properties": {
+          "reports": {
+            "additionalProperties": true,
+            "title": "Reports",
+            "type": "object"
+          }
+        },
+        "required": [
+          "reports"
+        ],
+        "title": "EvalReports",
+        "type": "object"
+      },
+      "EventDetail": {
+        "properties": {
+          "camera_id": {
+            "title": "Camera Id",
+            "type": "string"
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "plate_argmax": {
+            "title": "Plate Argmax",
+            "type": "string"
+          },
+          "plate_confidence": {
+            "title": "Plate Confidence",
+            "type": "number"
+          },
+          "plate_posterior": {
+            "items": {
+              "$ref": "#/components/schemas/SlotPosteriorOut"
+            },
+            "title": "Plate Posterior",
+            "type": "array"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "trajectory_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trajectory Id"
+          },
+          "vehicle_type": {
+            "title": "Vehicle Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "camera_id",
+          "timestamp",
+          "plate_argmax",
+          "plate_confidence",
+          "color",
+          "vehicle_type",
+          "trajectory_id",
+          "plate_posterior"
+        ],
+        "title": "EventDetail",
+        "type": "object"
+      },
+      "EventSummary": {
+        "properties": {
+          "camera_id": {
+            "title": "Camera Id",
+            "type": "string"
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "plate_argmax": {
+            "title": "Plate Argmax",
+            "type": "string"
+          },
+          "plate_confidence": {
+            "title": "Plate Confidence",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "trajectory_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trajectory Id"
+          },
+          "vehicle_type": {
+            "title": "Vehicle Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "camera_id",
+          "timestamp",
+          "plate_argmax",
+          "plate_confidence",
+          "color",
+          "vehicle_type",
+          "trajectory_id"
+        ],
+        "title": "EventSummary",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Health": {
+        "properties": {
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "n_events": {
+            "title": "N Events",
+            "type": "integer"
+          },
+          "n_trajectories": {
+            "title": "N Trajectories",
+            "type": "integer"
+          },
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "dataset",
+          "n_events",
+          "n_trajectories"
+        ],
+        "title": "Health",
+        "type": "object"
+      },
+      "LinkEvidence": {
+        "properties": {
+          "appearance_lr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appearance Lr"
+          },
+          "delta_t_s": {
+            "title": "Delta T S",
+            "type": "number"
+          },
+          "expected_t_s": {
+            "title": "Expected T S",
+            "type": "number"
+          },
+          "from_event_id": {
+            "title": "From Event Id",
+            "type": "string"
+          },
+          "kinematic_lr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kinematic Lr"
+          },
+          "plate_lr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plate Lr"
+          },
+          "prior_log_odds": {
+            "title": "Prior Log Odds",
+            "type": "number"
+          },
+          "skipped_cameras": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skipped Cameras",
+            "type": "array"
+          },
+          "to_event_id": {
+            "title": "To Event Id",
+            "type": "string"
+          },
+          "total_log_odds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Log Odds"
+          }
+        },
+        "required": [
+          "from_event_id",
+          "to_event_id",
+          "plate_lr",
+          "appearance_lr",
+          "kinematic_lr",
+          "prior_log_odds",
+          "total_log_odds",
+          "delta_t_s",
+          "expected_t_s",
+          "skipped_cameras"
+        ],
+        "title": "LinkEvidence",
+        "type": "object"
+      },
+      "OdMatrix": {
+        "properties": {
+          "matrix": {
+            "items": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "title": "Matrix",
+            "type": "array"
+          },
+          "zones": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Zones",
+            "type": "array"
+          }
+        },
+        "required": [
+          "zones",
+          "matrix"
+        ],
+        "title": "OdMatrix",
+        "type": "object"
+      },
+      "Page_EventSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EventSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[EventSummary]",
+        "type": "object"
+      },
+      "Page_TrajectorySummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrajectorySummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[TrajectorySummary]",
+        "type": "object"
+      },
+      "PathPoint": {
+        "properties": {
+          "camera_id": {
+            "title": "Camera Id",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "camera_id",
+          "lat",
+          "lon",
+          "timestamp"
+        ],
+        "title": "PathPoint",
+        "type": "object"
+      },
+      "PlateConsensus": {
+        "properties": {
+          "entropy_bits": {
+            "title": "Entropy Bits",
+            "type": "number"
+          },
+          "per_slot": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/SlotRead"
+              },
+              "type": "array"
+            },
+            "title": "Per Slot",
+            "type": "array"
+          },
+          "single_read_plates": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Single Read Plates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "per_slot",
+          "single_read_plates",
+          "entropy_bits"
+        ],
+        "title": "PlateConsensus",
+        "type": "object"
+      },
+      "ReplayRequest": {
+        "properties": {
+          "action": {
+            "enum": [
+              "start",
+              "pause",
+              "reset"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "speed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "ReplayRequest",
+        "type": "object"
+      },
+      "ReplayState": {
+        "properties": {
+          "running": {
+            "title": "Running",
+            "type": "boolean"
+          },
+          "sim_time": {
+            "title": "Sim Time",
+            "type": "string"
+          },
+          "speed": {
+            "title": "Speed",
+            "type": "number"
+          }
+        },
+        "required": [
+          "running",
+          "speed",
+          "sim_time"
+        ],
+        "title": "ReplayState",
+        "type": "object"
+      },
+      "RoadEdge": {
+        "properties": {
+          "from_node": {
+            "title": "From Node",
+            "type": "string"
+          },
+          "length_m": {
+            "title": "Length M",
+            "type": "number"
+          },
+          "speed_limit_kmh": {
+            "title": "Speed Limit Kmh",
+            "type": "number"
+          },
+          "to_node": {
+            "title": "To Node",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_node",
+          "to_node",
+          "length_m",
+          "speed_limit_kmh"
+        ],
+        "title": "RoadEdge",
+        "type": "object"
+      },
+      "RoadNode": {
+        "properties": {
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "lat",
+          "lon"
+        ],
+        "title": "RoadNode",
+        "type": "object"
+      },
+      "SearchHit": {
+        "properties": {
+          "matched_plate": {
+            "title": "Matched Plate",
+            "type": "string"
+          },
+          "probability": {
+            "title": "Probability",
+            "type": "number"
+          },
+          "trajectory": {
+            "$ref": "#/components/schemas/TrajectorySummary"
+          }
+        },
+        "required": [
+          "trajectory",
+          "probability",
+          "matched_plate"
+        ],
+        "title": "SearchHit",
+        "type": "object"
+      },
+      "SlotPosteriorOut": {
+        "properties": {
+          "top": {
+            "items": {
+              "$ref": "#/components/schemas/SlotRead"
+            },
+            "title": "Top",
+            "type": "array"
+          },
+          "unread": {
+            "title": "Unread",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "top",
+          "unread"
+        ],
+        "title": "SlotPosteriorOut",
+        "type": "object"
+      },
+      "SlotRead": {
+        "properties": {
+          "char": {
+            "title": "Char",
+            "type": "string"
+          },
+          "prob": {
+            "title": "Prob",
+            "type": "number"
+          }
+        },
+        "required": [
+          "char",
+          "prob"
+        ],
+        "title": "SlotRead",
+        "type": "object"
+      },
+      "TrajectoryDetail": {
+        "properties": {
+          "camera_sequence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Camera Sequence",
+            "type": "array"
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "consensus": {
+            "$ref": "#/components/schemas/PlateConsensus"
+          },
+          "decoded_plate": {
+            "title": "Decoded Plate",
+            "type": "string"
+          },
+          "end_time": {
+            "title": "End Time",
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventSummary"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "has_alert": {
+            "title": "Has Alert",
+            "type": "boolean"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/LinkEvidence"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "n_events": {
+            "title": "N Events",
+            "type": "integer"
+          },
+          "path": {
+            "items": {
+              "$ref": "#/components/schemas/PathPoint"
+            },
+            "title": "Path",
+            "type": "array"
+          },
+          "plate_confidence": {
+            "title": "Plate Confidence",
+            "type": "number"
+          },
+          "start_time": {
+            "title": "Start Time",
+            "type": "string"
+          },
+          "trajectory_id": {
+            "title": "Trajectory Id",
+            "type": "string"
+          },
+          "vehicle_type": {
+            "title": "Vehicle Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trajectory_id",
+          "decoded_plate",
+          "plate_confidence",
+          "start_time",
+          "end_time",
+          "n_events",
+          "camera_sequence",
+          "color",
+          "vehicle_type",
+          "has_alert",
+          "events",
+          "links",
+          "path",
+          "consensus"
+        ],
+        "title": "TrajectoryDetail",
+        "type": "object"
+      },
+      "TrajectorySummary": {
+        "properties": {
+          "camera_sequence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Camera Sequence",
+            "type": "array"
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "decoded_plate": {
+            "title": "Decoded Plate",
+            "type": "string"
+          },
+          "end_time": {
+            "title": "End Time",
+            "type": "string"
+          },
+          "has_alert": {
+            "title": "Has Alert",
+            "type": "boolean"
+          },
+          "n_events": {
+            "title": "N Events",
+            "type": "integer"
+          },
+          "plate_confidence": {
+            "title": "Plate Confidence",
+            "type": "number"
+          },
+          "start_time": {
+            "title": "Start Time",
+            "type": "string"
+          },
+          "trajectory_id": {
+            "title": "Trajectory Id",
+            "type": "string"
+          },
+          "vehicle_type": {
+            "title": "Vehicle Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trajectory_id",
+          "decoded_plate",
+          "plate_confidence",
+          "start_time",
+          "end_time",
+          "n_events",
+          "camera_sequence",
+          "color",
+          "vehicle_type",
+          "has_alert"
+        ],
+        "title": "TrajectorySummary",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VolumeBucket": {
+        "properties": {
+          "bucket_start": {
+            "title": "Bucket Start",
+            "type": "string"
+          },
+          "camera_id": {
+            "title": "Camera Id",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "camera_id",
+          "bucket_start",
+          "count"
+        ],
+        "title": "VolumeBucket",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "SUTRA API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/alerts": {
+      "get": {
+        "operationId": "list_alerts_api_alerts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Alert"
+                  },
+                  "title": "Response List Alerts Api Alerts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Alerts",
+        "tags": [
+          "alerts"
+        ]
+      }
+    },
+    "/api/analytics/corridors": {
+      "get": {
+        "operationId": "corridors_api_analytics_corridors_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Corridor"
+                  },
+                  "title": "Response Corridors Api Analytics Corridors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Corridors",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/od_matrix": {
+      "get": {
+        "operationId": "od_matrix_api_analytics_od_matrix_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OdMatrix"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Od Matrix",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/summary": {
+      "get": {
+        "operationId": "summary_api_analytics_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Summary",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/volumes": {
+      "get": {
+        "operationId": "volumes_api_analytics_volumes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "bucket_minutes",
+            "required": false,
+            "schema": {
+              "default": 60,
+              "title": "Bucket Minutes",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "camera_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Camera Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VolumeBucket"
+                  },
+                  "title": "Response Volumes Api Analytics Volumes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Volumes",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/cameras": {
+      "get": {
+        "operationId": "cameras_api_cameras_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CameraStats"
+                  },
+                  "title": "Response Cameras Api Cameras Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cameras",
+        "tags": [
+          "core"
+        ]
+      }
+    },
+    "/api/city": {
+      "get": {
+        "operationId": "city_api_city_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/City"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "City",
+        "tags": [
+          "core"
+        ]
+      }
+    },
+    "/api/eval": {
+      "get": {
+        "operationId": "eval_reports_api_eval_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvalReports"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Eval Reports",
+        "tags": [
+          "eval"
+        ]
+      }
+    },
+    "/api/events": {
+      "get": {
+        "operationId": "list_events_api_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "camera_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Camera Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_EventSummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Events",
+        "tags": [
+          "core"
+        ]
+      }
+    },
+    "/api/events/{event_id}": {
+      "get": {
+        "operationId": "get_event_api_events__event_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Event",
+        "tags": [
+          "core"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "core"
+        ]
+      }
+    },
+    "/api/replay": {
+      "post": {
+        "operationId": "replay_control_api_replay_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replay Control",
+        "tags": [
+          "replay"
+        ]
+      }
+    },
+    "/api/search": {
+      "get": {
+        "operationId": "search_api_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "color",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Color"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vehicle_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vehicle Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SearchHit"
+                  },
+                  "title": "Response Search Api Search Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search",
+        "tags": [
+          "core"
+        ]
+      }
+    },
+    "/api/trajectories": {
+      "get": {
+        "operationId": "list_trajectories_api_trajectories_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plate",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Plate"
+            }
+          },
+          {
+            "in": "query",
+            "name": "camera_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Camera Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_len",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Len"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_alert",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Alert"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_TrajectorySummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Trajectories",
+        "tags": [
+          "core"
+        ]
+      }
+    },
+    "/api/trajectories/{trajectory_id}": {
+      "get": {
+        "operationId": "get_trajectory_api_trajectories__trajectory_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trajectory_id",
+            "required": true,
+            "schema": {
+              "title": "Trajectory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrajectoryDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Trajectory",
+        "tags": [
+          "core"
+        ]
+      }
+    }
+  }
+}

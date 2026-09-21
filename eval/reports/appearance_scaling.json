@@ -1,0 +1,35 @@
+{
+  "description": "Appearance-only rank-1 retrieval accuracy vs gallery size (number of distinct vehicle identities). Demonstrates that appearance alone decays at city scale -- the reason SUTRA fuses plate + appearance + kinematics rather than relying on any single channel.",
+  "n_cameras": 20,
+  "seed": 42,
+  "points": [
+    {
+      "gallery_size": 500,
+      "n_events": 1980,
+      "n_eligible_queries": 1974,
+      "appearance_rank1": 0.8156,
+      "whole_plate_accuracy": 0.8843
+    },
+    {
+      "gallery_size": 1500,
+      "n_events": 5819,
+      "n_eligible_queries": 3000,
+      "appearance_rank1": 0.7163,
+      "whole_plate_accuracy": 0.8828
+    },
+    {
+      "gallery_size": 5000,
+      "n_events": 19536,
+      "n_eligible_queries": 3000,
+      "appearance_rank1": 0.6007,
+      "whole_plate_accuracy": 0.882
+    },
+    {
+      "gallery_size": 20000,
+      "n_events": 78188,
+      "n_eligible_queries": 3000,
+      "appearance_rank1": 0.4393,
+      "whole_plate_accuracy": 0.8815
+    }
+  ]
+}

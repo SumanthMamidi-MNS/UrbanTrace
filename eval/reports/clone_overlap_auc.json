@@ -1,0 +1,33 @@
+{
+  "description": "Clone stratum AUC split by whether the clone's route was drawn disjoint from (easy case) or overlapping with (realistic hard case) its source vehicle's route. See docs/decisions.md, 'Day 3a', Part 0.",
+  "config": {
+    "n_cameras": 20,
+    "city_seed": 1,
+    "train_seed": 101,
+    "holdout_seed": 202,
+    "n_vehicles_train": 4000,
+    "n_vehicles_holdout": 6000,
+    "clone_fraction": 0.05,
+    "clone_route_overlap": 0.5
+  },
+  "n_clone_vehicles_holdout": 300,
+  "n_overlap_clone_vehicles_holdout": 159,
+  "matrix": {
+    "disjoint": {
+      "n_pairs": 286,
+      "n_positive": 143,
+      "plate_auc": 0.4991442124309257,
+      "appearance_auc": 0.9995598806787618,
+      "kinematic_auc": 1.0,
+      "fused_auc": 1.0
+    },
+    "overlap": {
+      "n_pairs": 1126,
+      "n_positive": 563,
+      "plate_auc": 0.5017462275490663,
+      "appearance_auc": 0.9988563550378744,
+      "kinematic_auc": 0.9660692370547278,
+      "fused_auc": 0.9983720805504639
+    }
+  }
+}

@@ -1,0 +1,31 @@
+# Never send these into the build context (architecture.md §5/§9, docs/README):
+# large, machine-local, or generated — none of it belongs in the image.
+
+.git/
+.gitignore
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# datasets / local DB (SUTRA_DB_PATH lives outside the repo; data/ is gitignored and can be
+# tens/hundreds of MB of generated events+embeddings — never bake it into the image)
+data/
+models/
+*.db
+*.sqlite3
+*.mp4
+
+# Node (the web-build stage runs its own `npm ci` inside the image)
+web/node_modules/
+web/dist/
+
+# not needed at runtime, keep the build context small
+docs/
+tests/
+# eval/reports/*.json (~100KB) is intentionally NOT excluded -- /api/eval serves it verbatim.

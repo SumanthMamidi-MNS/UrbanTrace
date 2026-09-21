@@ -1,0 +1,71 @@
+{
+  "description": "Single-read vs. consensus whole-plate accuracy by trajectory length, on the first 30000 events of data\\run1 (ground-truth grouping by gt_vehicle_id, association-error-free). Reported at eps=0 (original pure-product likelihood) and at the tuned epsilon-contamination eps, to show the outlier-veto fix.",
+  "run_dir": "data\\run1",
+  "n_events_sampled": 30000,
+  "n_trajectories": 5610,
+  "eps_tuned": 0.2,
+  "eps_0": {
+    "1": {
+      "n_trajectories": 92,
+      "n_events": 92,
+      "single_read_accuracy": 0.8913043478260869,
+      "consensus_accuracy": 0.9021739130434783
+    },
+    "2": {
+      "n_trajectories": 653,
+      "n_events": 1306,
+      "single_read_accuracy": 0.8920367534456355,
+      "consensus_accuracy": 0.892802450229709
+    },
+    "3": {
+      "n_trajectories": 706,
+      "n_events": 2118,
+      "single_read_accuracy": 0.8777148253068933,
+      "consensus_accuracy": 0.9787535410764873
+    },
+    "4+": {
+      "n_trajectories": 4159,
+      "n_events": 26484,
+      "single_read_accuracy": 0.8777375018879323,
+      "consensus_accuracy": 0.9987977879297908
+    },
+    "overall": {
+      "n_trajectories": 5610,
+      "n_events": 30000,
+      "single_read_accuracy": 0.8784,
+      "consensus_accuracy": 0.9823529411764705
+    }
+  },
+  "eps_tuned_table": {
+    "1": {
+      "n_trajectories": 92,
+      "n_events": 92,
+      "single_read_accuracy": 0.8913043478260869,
+      "consensus_accuracy": 0.9021739130434783
+    },
+    "2": {
+      "n_trajectories": 653,
+      "n_events": 1306,
+      "single_read_accuracy": 0.8920367534456355,
+      "consensus_accuracy": 0.892802450229709
+    },
+    "3": {
+      "n_trajectories": 706,
+      "n_events": 2118,
+      "single_read_accuracy": 0.8777148253068933,
+      "consensus_accuracy": 0.9830028328611898
+    },
+    "4+": {
+      "n_trajectories": 4159,
+      "n_events": 26484,
+      "single_read_accuracy": 0.8777375018879323,
+      "consensus_accuracy": 0.9995191151719163
+    },
+    "overall": {
+      "n_trajectories": 5610,
+      "n_events": 30000,
+      "single_read_accuracy": 0.8784,
+      "consensus_accuracy": 0.9834224598930481
+    }
+  }
+}

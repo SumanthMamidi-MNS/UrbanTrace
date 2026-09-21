@@ -1,0 +1,46 @@
+services:
+  # The demo API + UI, single container, port 8000.
+  sutra:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sutra:latest
+    ports:
+      - "8000:8000"
+    environment:
+      SUTRA_DB_PATH: /data/sutra.db
+    volumes:
+      # Named volume, never a bind mount into the (OneDrive) project folder --
+      # SQLite on OneDrive's synced disk I/O is extremely slow (see README's
+      # troubleshooting section).
+      - sutra-db:/data
+
+  # One-shot: generate a small demo dataset and ingest it, so a fresh machine
+  # gets a working demo with one command. Run this BEFORE `docker compose up
+  # sutra` the first time (or restart the `sutra` service afterwards -- it
+  # loads its DB snapshot once at startup, see api/state.py).
+  #
+  #   docker compose --profile seed run --rm seed
+  #
+  # 25 cameras / 4,000 vehicles / 6 simulated hours: modest on purpose so a
+  # fresh machine finishes in a few minutes, not the full 50-camera /
+  # 20,000-vehicle / 24h target-scale run.
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sutra:latest
+    profiles: ["seed"]
+    environment:
+      SUTRA_DB_PATH: /data/sutra.db
+    volumes:
+      - sutra-db:/data
+    command:
+      - sh
+      - -c
+      - >-
+        python -m sim.generate --cameras 25 --vehicles 4000 --hours 6 --seed 42 --out /tmp/seed &&
+        python -m api.ingest --data /tmp/seed --db $$SUTRA_DB_PATH --build-demo
+
+volumes:
+  sutra-db:

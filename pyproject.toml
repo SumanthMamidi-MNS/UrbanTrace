@@ -1,0 +1,46 @@
+[project]
+name = "sutra"
+version = "0.1.0"
+description = "SUTRA — City-Wide AI Engine for Multi-Camera ANPR Trajectory Tracking (SIH26127)"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2",
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "networkx",
+    "rapidfuzz",
+    "pyyaml",
+    "typer",
+    "rich",
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy",
+    "httpx",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["engine*", "sim*", "api*", "eval*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Option", "typer.Argument"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

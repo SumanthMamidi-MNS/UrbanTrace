@@ -1,0 +1,49 @@
+{
+  "description": "Baselines A/B/C (architecture.md \u00a78) on the IDENTICAL in-memory dataset eval/ablation.py evaluates on (same seeds/config: 20 cameras, 2500 eval vehicles, 4h, clone_fraction=0.02, train 1500 vehicles different seed same city) -- directly comparable to eval/reports/ablation.json's rows. Baseline A: exact plate match, same gate, greedy time chaining (eval.run_pipeline._build_exact_match_baseline). Baseline B: plate_argmax Levenshtein <=1 within the same gate, greedy time chaining. Baseline C: B plus a kinematic-plausibility filter tightened to the fitted log-normal's [5th, 95th] percentile transit-time window per (camera-pair, time-of-day) -- NOT the original hard physical-impossibility check (KinematicLRResult.physically_impossible), which was measured (see module docstring, 'Investigated: Baseline B vs C') to reject 0 of ~13,400 gate-admitted candidates on this dataset because the gate's own window (z=3.0 sigma) is already tighter than the physical v_max floor for every observed camera pair here -- correct-by-construction, not a bug, but it made B and C bit-identical, so C was redefined to use the tighter learned window instead. All three: no scoring, no global optimisation. Measured on the FIXED engine (per-successor prior + corrected arc cost).",
+  "dataset": {
+    "n_cameras": 20,
+    "n_vehicles_train": 1500,
+    "n_vehicles_eval": 2500,
+    "hours": 4,
+    "clone_fraction": 0.02,
+    "city_seed": 5101,
+    "train_seed": 6101,
+    "eval_seed": 7101
+  },
+  "baseline_a_exact_match": {
+    "idf1": 0.8749862198214089,
+    "id_precision": 0.8749862198214089,
+    "id_recall": 0.8749862198214089,
+    "id_switches": 1519,
+    "fragmentation": 1109,
+    "trajectory_completeness": 0.8783178924091654,
+    "n_predicted_trajectories": 3585,
+    "n_gt_vehicles": 2498,
+    "n_gt_events": 9071,
+    "n_predicted_events": 9071
+  },
+  "baseline_b_fuzzy_levenshtein1": {
+    "idf1": 0.9518244956454636,
+    "id_precision": 0.9518244956454636,
+    "id_recall": 0.9518244956454636,
+    "id_switches": 538,
+    "fragmentation": 393,
+    "trajectory_completeness": 0.9552098821914675,
+    "n_predicted_trajectories": 2869,
+    "n_gt_vehicles": 2498,
+    "n_gt_events": 9071,
+    "n_predicted_events": 9071
+  },
+  "baseline_c_fuzzy_plus_kinematic": {
+    "idf1": 0.862969904089957,
+    "id_precision": 0.862969904089957,
+    "id_recall": 0.862969904089957,
+    "id_switches": 1189,
+    "fragmentation": 998,
+    "trajectory_completeness": 0.8754260551298181,
+    "n_predicted_trajectories": 3483,
+    "n_gt_vehicles": 2498,
+    "n_gt_events": 9071,
+    "n_predicted_events": 9071
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "Gate recall and mean candidates/event at production scale (data/run1). Gating is the primary blocker (architecture.md \u00a73, \u00a77) -- recall here caps what everything downstream can ever recover.",
+  "n_events": 107234,
+  "mean_candidates_per_event": 207.04980696420913,
+  "naive_mean_candidates_per_event": 53616.5,
+  "cut_fraction_vs_naive": 0.9961383192307552,
+  "recall": 0.9971916230126434,
+  "n_true_predecessor_pairs": 87239,
+  "n_recalled": 86994,
+  "timing_s": {
+    "load_events": 15.01544976234436,
+    "fit_kinematic_model": 0.19387483596801758,
+    "gate_candidates": 7.000596761703491,
+    "recall_check": 0.14872002601623535
+  }
+}

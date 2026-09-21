@@ -1,0 +1,128 @@
+{
+  "description": "Channel ablation (architecture.md \u00a78) on ONE in-memory dataset (20 cameras, 2500 eval vehicles, 4h, clone_fraction=0.02; train split 1500 vehicles, different seed, SAME city, per architecture.md \u00a710). Priors/kinematic/appearance models fitted on the train split only. Every 'min_cost_flow' row runs the REAL production pipeline (engine.association.window.solve_windowed, unmodified) with FusionModel.channels masking out channels from the fused total; the 'all_three_greedy_chaining' row replaces that solver with a greedy nearest-best chaining heuristic over the SAME evidence, run UNWINDOWED on the whole eval dataset at once -- see module docstring for exactly how each row was produced. Measured on the FIXED engine (per-successor prior + corrected arc cost).",
+  "dataset": {
+    "n_cameras": 20,
+    "n_vehicles_train": 1500,
+    "n_vehicles_eval": 2500,
+    "hours": 4,
+    "clone_fraction": 0.02,
+    "city_seed": 5101,
+    "train_seed": 6101,
+    "eval_seed": 7101
+  },
+  "configs": {
+    "plate_only": {
+      "channels": [
+        "plate"
+      ],
+      "method": "min_cost_flow",
+      "idf1": 0.9679197442398854,
+      "id_precision": 0.9679197442398854,
+      "id_recall": 0.9679197442398854,
+      "id_switches": 373,
+      "fragmentation": 222,
+      "trajectory_completeness": 0.9767814251401121,
+      "n_predicted_trajectories": 2661,
+      "n_gt_vehicles": 2498,
+      "n_gt_events": 9071,
+      "n_predicted_events": 9071,
+      "elapsed_s": 145.03742384910583
+    },
+    "plate_plus_kinematic": {
+      "channels": [
+        "kinematic",
+        "plate"
+      ],
+      "method": "min_cost_flow",
+      "idf1": 0.9013339212876199,
+      "id_precision": 0.9013339212876199,
+      "id_recall": 0.9013339212876199,
+      "id_switches": 475,
+      "fragmentation": 450,
+      "trajectory_completeness": 0.9412968470014106,
+      "n_predicted_trajectories": 2347,
+      "n_gt_vehicles": 2498,
+      "n_gt_events": 9071,
+      "n_predicted_events": 9071,
+      "elapsed_s": 215.8321213722229
+    },
+    "plate_plus_appearance": {
+      "channels": [
+        "appearance",
+        "plate"
+      ],
+      "method": "min_cost_flow",
+      "idf1": 0.9874324771249036,
+      "id_precision": 0.9874324771249036,
+      "id_recall": 0.9874324771249036,
+      "id_switches": 199,
+      "fragmentation": 100,
+      "trajectory_completeness": 0.9900463227725037,
+      "n_predicted_trajectories": 2596,
+      "n_gt_vehicles": 2498,
+      "n_gt_events": 9071,
+      "n_predicted_events": 9071,
+      "elapsed_s": 70.13942813873291
+    },
+    "kinematic_plus_appearance_no_plate": {
+      "channels": [
+        "appearance",
+        "kinematic"
+      ],
+      "method": "min_cost_flow",
+      "idf1": 0.7398302281997575,
+      "id_precision": 0.7398302281997575,
+      "id_recall": 0.7398302281997575,
+      "id_switches": 2255,
+      "fragmentation": 2053,
+      "trajectory_completeness": 0.784736360516985,
+      "n_predicted_trajectories": 3805,
+      "n_gt_vehicles": 2498,
+      "n_gt_events": 9071,
+      "n_predicted_events": 9071,
+      "elapsed_s": 147.4542133808136
+    },
+    "all_three": {
+      "channels": [
+        "appearance",
+        "kinematic",
+        "plate"
+      ],
+      "method": "min_cost_flow",
+      "idf1": 0.9812589571160842,
+      "id_precision": 0.9812589571160842,
+      "id_recall": 0.9812589571160842,
+      "id_switches": 118,
+      "fragmentation": 106,
+      "trajectory_completeness": 0.9858686949559647,
+      "n_predicted_trajectories": 2510,
+      "n_gt_vehicles": 2498,
+      "n_gt_events": 9071,
+      "n_predicted_events": 9071,
+      "elapsed_s": 135.32480478286743
+    },
+    "all_three_greedy_chaining": {
+      "channels": [
+        "appearance",
+        "kinematic",
+        "plate"
+      ],
+      "method": "greedy",
+      "idf1": 0.8987983684268548,
+      "id_precision": 0.8987983684268548,
+      "id_recall": 0.8987983684268548,
+      "id_switches": 721,
+      "fragmentation": 720,
+      "trajectory_completeness": 0.9080874223188075,
+      "n_predicted_trajectories": 2454,
+      "n_gt_vehicles": 2498,
+      "n_gt_events": 9071,
+      "n_predicted_events": 9071,
+      "elapsed_s": 87.80028176307678
+    }
+  },
+  "notes": {
+    "no_plate_row": "kinematic_plus_appearance_no_plate shows how far kinematics+appearance get WITHOUT the near-unique plate identifier -- the honest floor the plate channel's contribution is measured against.",
+    "greedy_row": "all_three_greedy_chaining uses the identical fused evidence as all_three but a greedy (not globally optimal) assignment -- the gap between these two rows is what the min-cost-flow global solver is worth."
+  }
+}

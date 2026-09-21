@@ -1,0 +1,139 @@
+@import 'tailwindcss';
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
+/*
+ * SUTRA console palette. One accent (signal cyan), one caution (amber: misreads, evidence
+ * against a link, medium severity), and red reserved strictly for alerts.
+ * Everything else is neutral slate.
+ */
+@theme {
+  --color-ink-950: #070a0e;
+  --color-ink-900: #0b0f14;
+  --color-ink-850: #0f141a;
+  --color-ink-800: #131920;
+  --color-ink-750: #182029;
+  --color-ink-700: #1e2732;
+  --color-ink-600: #2a3542;
+  --color-ink-500: #3a4757;
+  --color-fg-muted: #7d8b9b;
+  --color-fg-dim: #566374;
+  --color-fg: #d3dbe4;
+  --color-fg-strong: #eef3f8;
+
+  --color-accent: #3cc4d8;
+  --color-accent-strong: #6fdcec;
+  --color-accent-dim: #1d6f7c;
+  --color-accent-faint: #0f3940;
+
+  --color-caution: #e3a008;
+  --color-caution-dim: #6f4f07;
+  --color-caution-faint: #2e2106;
+
+  --color-alert: #ef4444;
+  --color-alert-dim: #7f1d1d;
+  --color-alert-faint: #2a0f10;
+
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', 'Consolas', 'SFMono-Regular', 'Menlo', monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink-900);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbars that don't shout on a dark console. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-600) transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* MapLibre popups restyled for the console. */
+.maplibregl-popup-content {
+  background: var(--color-ink-800);
+  color: var(--color-fg);
+  border: 1px solid var(--color-ink-600);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.5);
+}
+.maplibregl-popup-tip {
+  display: none;
+}
+.maplibregl-ctrl-attrib {
+  display: none;
+}
+.maplibregl-ctrl-group {
+  background: var(--color-ink-800) !important;
+  border: 1px solid var(--color-ink-600);
+}
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--color-ink-600) !important;
+}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(0.85);
+}
+
+@keyframes ticker-in {
+  from {
+    background-color: rgb(60 196 216 / 0.14);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.ticker-in {
+  animation: ticker-in 1.6s ease-out;
+}
+
+@keyframes alert-in {
+  from {
+    background-color: rgb(239 68 68 / 0.22);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.alert-in {
+  animation: alert-in 2.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-in,
+  .alert-in {
+    animation: none;
+  }
+}
+
+.hatch {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgb(125 139 155 / 0.35) 0 3px,
+    transparent 3px 6px
+  );
+}

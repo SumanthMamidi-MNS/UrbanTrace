@@ -1,0 +1,14 @@
+{
+  "description": "Secondary (plate-based) blocking must be an overflow path, not the default one (architecture.md \u00a77). Engagement rate is the fraction of events whose gated candidate set exceeded the budget (500); recall cost is measured ONLY on true predecessor pairs the gate itself already recalled, isolating blocking's own cost from the gate's.",
+  "config": {
+    "candidate_budget": 500,
+    "max_edit_distance": 3
+  },
+  "n_events_total": 107234,
+  "n_events_engaged": 270,
+  "engagement_rate": 0.0025178581420071994,
+  "n_true_pairs_checked": 178,
+  "n_true_pairs_dropped_by_blocking": 0,
+  "recall_cost": 0.0,
+  "blocking_wall_time_s": 0.09087038040161133
+}

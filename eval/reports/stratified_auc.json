@@ -1,0 +1,82 @@
+{
+  "description": "Stratified pairwise AUC: plate-only is near-perfect on routine traffic and collapses to chance on clones; fusion holds across all four strata. A single scalar AUC hides exactly this -- see docs/decisions.md, 'Day 2b'.",
+  "config": {
+    "n_cameras": 20,
+    "city_seed": 1,
+    "train_seed": 101,
+    "holdout_seed": 202,
+    "stress_seed": 303,
+    "n_vehicles_train": 4000,
+    "n_vehicles_holdout": 6000,
+    "n_vehicles_stress": 3000,
+    "clone_fraction": 0.02,
+    "near_miss_fraction": 0.02,
+    "min_degraded_slots": 4,
+    "max_plate_similar_edit_distance": 2,
+    "stress_corruption": {
+      "p_char_correct": 0.9,
+      "p_char_confusable": 0.85,
+      "p_blank_correct": 0.995,
+      "posterior_peak_mass_min": 0.55,
+      "posterior_peak_mass_max": 0.75,
+      "posterior_group_leak": 0.85,
+      "p_occlude": 0.35,
+      "occlude_run_len_min": 2,
+      "occlude_run_len_max": 5,
+      "p_miss": 0.05,
+      "embedding_noise_sigma_min": 0.13,
+      "embedding_noise_sigma_max": 0.142,
+      "color_p_correct": 0.8,
+      "type_p_correct": 0.85,
+      "attr_confidence_min": 0.55,
+      "attr_confidence_max": 0.95,
+      "clone_fraction": 0.0
+    }
+  },
+  "matrix": {
+    "routine": {
+      "n_pairs": 3998,
+      "n_positive": 2000,
+      "plate_auc": 0.9999982482482482,
+      "appearance_auc": 0.9980151401401401,
+      "kinematic_auc": 0.8661646646646647,
+      "fused_auc": 1.0
+    },
+    "clone": {
+      "n_pairs": 516,
+      "n_positive": 258,
+      "plate_auc": 0.47650381587644974,
+      "appearance_auc": 0.9966348176191334,
+      "kinematic_auc": 0.9595276726158284,
+      "fused_auc": 0.9984375938945976
+    },
+    "degraded": {
+      "n_pairs": 4000,
+      "n_positive": 2000,
+      "plate_auc": 0.99627725,
+      "appearance_auc": 0.997552125,
+      "kinematic_auc": 0.92376675,
+      "fused_auc": 0.99917425
+    },
+    "plate_similar": {
+      "n_pairs": 254,
+      "n_positive": 127,
+      "plate_auc": 0.9481058962117924,
+      "appearance_auc": 0.9984499968999938,
+      "kinematic_auc": 1.0,
+      "fused_auc": 1.0
+    }
+  },
+  "stratum_frequencies": {
+    "routine": 0.9018836679776444,
+    "clone": 0.038018353687987304,
+    "degraded": 0.021320637549161664,
+    "plate_similar": 0.03877734078520665,
+    "n_total_pairs_in_holdout": 14493,
+    "note": "Measured on the (non-stress) held-out split, at clone_fraction=0.02, near_miss_fraction=0.02. 'degraded' here is the NATURAL rate under default corruption, not the boosted stress dataset used to actually measure the degraded stratum's AUC (see the stress_dataset block below) -- weighting by this natural rate is what keeps the composite figure honest about real-world prevalence."
+  },
+  "frequency_weighted": {
+    "plate_auc": 0.9780042702906095,
+    "fused_auc": 0.9999229943756244
+  }
+}
