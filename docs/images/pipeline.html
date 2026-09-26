@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UrbanTrace pipeline</title>
+<style>
+  :root {
+    --bg: #F0EEE7;
+    --ink: #1C2128;
+    --ink-2: #3A414B;
+    --muted: #5B626D;
+    --rule: #C9C4B6;
+
+    --eng-fill: #DCE5F0;  --eng-line: #8FA8C6;
+    --evi-fill: #F5E4BF;  --evi-line: #CFA453;
+    --gate-fill: #FBFAF6; --gate-line: #1C2128;
+    --out-fill: #D9E9D3;  --out-line: #8DB585;
+    --stop-fill: #F6DAD2; --stop-line: #D08E7C; --stop-ink: #8E3B27;
+    --final-fill: #1D2733;
+
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: "Segoe UI", system-ui, sans-serif;
+    --mono: Consolas, "Cascadia Mono", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); }
+  body {
+    width: 1500px;
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { position: relative; width: 1500px; padding: 64px 60px 56px; }
+
+  /* ---------- header ---------- */
+  .header { width: 800px; }
+  .eyebrow {
+    font: 700 15px/1 var(--sans); letter-spacing: .22em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 18px;
+  }
+  h1 {
+    font: 900 104px/0.92 var(--serif);
+        letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+  .subtitle {
+    margin-top: 20px;
+    font: 500 27px/1.32 var(--sans);
+    color: var(--ink-2);
+    max-width: 800px;
+  }
+  .hr { margin-top: 36px; height: 2px; background: var(--ink); width: 800px; }
+  .hr + .hr-thin { margin-top: 4px; height: 1px; background: var(--rule); width: 800px; }
+
+  /* ---------- main column ---------- */
+  .main { width: 800px; margin-top: 56px; }
+  .row { position: relative; }
+
+  .box {
+    position: relative;
+    border-radius: 18px;
+    padding: 24px 30px 25px;
+    border: 2px solid transparent;
+  }
+  .box .t {
+    display: flex; align-items: baseline; gap: 14px;
+    font: 750 28px/1.15 var(--sans); font-weight: 750; letter-spacing: -0.012em;
+  }
+  .box .n {
+    font: 600 17px/1 var(--mono); color: var(--muted); letter-spacing: 0;
+    min-width: 26px;
+  }
+  .box .c {
+    margin-top: 9px; padding-left: 40px;
+    font: 400 18.5px/1.45 var(--sans); color: var(--ink-2);
+  }
+  .eng  { background: var(--eng-fill);  border-color: var(--eng-line); }
+  .evi  { background: var(--evi-fill);  border-color: var(--evi-line); }
+  .gate { background: var(--gate-fill); border: 4px solid var(--gate-line); padding: 22px 28px 23px; }
+  .out  { background: var(--out-fill);  border-color: var(--out-line); }
+  .final { background: var(--final-fill); border-color: var(--final-fill); }
+  .final .t { color: #FFFFFF; }
+  .final .n { color: #9FB0C3; }
+  .final .c { color: #CBD4DE; }
+
+  .gate-tag {
+    position: absolute; top: -15px; left: 26px;
+    background: var(--ink); color: #FBFAF6;
+    font: 700 13px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase;
+    padding: 7px 11px 7px; border-radius: 6px;
+  }
+
+  .pill {
+    display: inline-block; margin: 14px 0 0 40px;
+    font: 500 16.5px/1 var(--sans); color: #2E4A6B;
+    background: rgba(255,255,255,.62); border: 1.5px dashed #7F9BBE;
+    border-radius: 999px; padding: 9px 16px;
+  }
+
+  /* evidence sub-cards */
+  .subs { display: flex; align-items: stretch; margin: 18px 0 0 40px; }
+  .sub {
+    flex: 1 1 0; background: rgba(255,253,247,.78);
+    border: 1.5px solid #DDBB78; border-radius: 12px; padding: 15px 16px 16px;
+  }
+  .sub h4 { font: 700 21px/1.2 var(--sans); color: var(--ink); }
+  .sub p { margin-top: 7px; font: 400 17px/1.42 var(--sans); color: var(--ink-2); }
+  .plus {
+    flex: 0 0 34px; display: flex; align-items: center; justify-content: center;
+    font: 700 28px/1 var(--sans); color: #9C7427;
+  }
+  .sum {
+    margin: 16px 0 0 40px; padding-top: 13px; border-top: 1.5px solid #D9B26A;
+    font: 600 18.5px/1.3 var(--sans); color: #5E4512;
+  }
+  .sum .ar { font-weight: 700; margin: 0 4px; }
+
+  .pair { display: flex; gap: 40px; }
+  .pair .box { flex: 1 1 0; padding: 22px 26px 23px; }
+  .pair .box .c { padding-left: 40px; }
+
+  /* arrows */
+  .varrow { display: block; height: 58px; }
+  .varrow svg { display: block; }
+
+  /* side branches */
+  .branch {
+    position: absolute; left: 800px; top: 50%; transform: translateY(-50%);
+    display: flex; align-items: center;
+  }
+  .harrow { position: relative; width: 140px; height: 44px; }
+  .harrow svg { position: absolute; left: 0; bottom: 0; }
+  .harrow .lbl {
+    position: absolute; left: 0; right: 0; top: -12px; text-align: center;
+    font: italic 700 17px/1 var(--sans); color: var(--stop-ink);
+  }
+  .stop {
+    width: 440px; background: var(--stop-fill); border: 2px solid var(--stop-line);
+    border-radius: 18px; padding: 20px 24px 22px;
+  }
+  .stop .t { font: 750 26px/1.15 var(--sans); font-weight: 750; color: var(--stop-ink); letter-spacing: -0.01em; }
+  .stop .c { margin-top: 8px; font: 400 17.5px/1.45 var(--sans); color: #4D3129; }
+  .stop .k {
+    display: inline-block; margin-bottom: 10px;
+    font: 700 12.5px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase;
+    color: var(--stop-ink); opacity: .85;
+  }
+
+  /* ---------- results card ---------- */
+  .card-wrap { position: absolute; top: 60px; right: 60px; width: 500px; }
+  .card {
+    background: #FBFAF6; border: 2px solid var(--ink); border-radius: 20px;
+    padding: 26px 28px 14px;
+    box-shadow: 8px 8px 0 rgba(28,33,40,.10);
+  }
+  .card h3 {
+    font: 800 30px/1.1 var(--serif);     letter-spacing: -0.01em;
+  }
+  .card .kick {
+    margin-top: 6px; font: 600 13.5px/1 var(--sans); letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .stat {
+    display: grid; grid-template-columns: 146px 1fr; column-gap: 14px; align-items: start;
+    padding: 16px 0 16px; border-top: 1.5px solid #E1DDD1;
+  }
+  .card .kick + .stat { margin-top: 16px; }
+  .stat .v {
+    font: 700 48px/1 var(--serif);     letter-spacing: -0.02em; color: #2B5585;
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+  .stat .d { padding-top: 3px; font: 400 18px/1.4 var(--sans); color: var(--ink-2); }
+  .stat .d b { font-weight: 700; color: var(--ink); }
+  .stat .d .vs { color: var(--muted); }
+  .nw { white-space: nowrap; }
+  .quote {
+    margin-top: 18px; padding: 2px 6px 0 18px; border-left: 3px solid var(--evi-line);
+    font: italic 400 18px/1.45 var(--serif); color: var(--muted);
+  }
+  .quote code { font: 500 15.5px/1 var(--mono); font-style: normal; color: var(--ink-2); }
+
+  /* ---------- legend + footer ---------- */
+  .legend {
+    margin-top: 52px; padding-top: 24px; border-top: 1px solid var(--rule);
+    display: flex; flex-wrap: wrap; gap: 14px 38px; align-items: center;
+    font: 500 18px/1 var(--sans); color: var(--ink-2);
+  }
+  .legend .lk { font: 700 14px/1 var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+  .legend span.i { display: inline-flex; align-items: center; gap: 11px; }
+  .sw { width: 24px; height: 24px; border-radius: 6px; border: 2px solid; display: inline-block; }
+  .sw.eng { background: var(--eng-fill); border-color: var(--eng-line); }
+  .sw.evi { background: var(--evi-fill); border-color: var(--evi-line); }
+  .sw.gate { background: var(--gate-fill); border: 3.5px solid var(--gate-line); padding: 0; }
+  .sw.out { background: var(--out-fill); border-color: var(--out-line); }
+  .sw.stp { background: var(--stop-fill); border-color: var(--stop-line); }
+  .sw.final { background: var(--final-fill); border-color: var(--final-fill); }
+
+  .footer { margin-top: 34px; padding-top: 26px; border-top: 2px solid var(--ink); }
+  .footer .big {
+    font: 800 34px/1.2 var(--serif);     letter-spacing: -0.012em; color: var(--ink);
+  }
+  .footer .small {
+    margin-top: 12px; font: 500 17px/1 var(--sans); color: var(--muted); letter-spacing: .02em;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- header -->
+  <div class="header">
+    <div class="eyebrow">Pipeline &nbsp;·&nbsp; multi-camera ANPR linking</div>
+    <h1>URBANTRACE</h1>
+    <p class="subtitle">City-scale vehicle tracking that reasons<br>in probabilities, not string matches</p>
+    <div class="hr"></div><div class="hr-thin"></div>
+  </div>
+
+  <!-- results card (top-right) -->
+  <div class="card-wrap">
+    <div class="card">
+      <h3>Measured, not claimed</h3>
+      <div class="kick">Evaluation results</div>
+      <div class="stat"><div class="v">0.972</div><div class="d">tracking accuracy (IDF1) on a congested 20,000-vehicle city day <span class="vs">— exact plate matching: 0.875</span></div></div>
+      <div class="stat"><div class="v">9×</div><div class="d">fewer identity errors: <span class="nw"><b>2,143</b> <span class="vs">vs 19,214</span></span></div></div>
+      <div class="stat"><div class="v">0.980</div><div class="d">accuracy when half of all plate reads are wrong <span class="vs">— exact matching: 0.553</span></div></div>
+      <div class="stat"><div class="v">94.3%</div><div class="d">OCR per character on held-out real Indian plates <span class="vs nw">(81.0% whole plate)</span></div></div>
+      <div class="stat"><div class="v">197</div><div class="d">cloned plates caught in one simulated day</div></div>
+    </div>
+    <p class="quote">Every number is reproducible from <code>eval/reports/</code> — nothing is tuned on what it is scored on.</p>
+  </div>
+
+  <!-- main column -->
+  <div class="main">
+
+    <div class="row">
+      <div class="box eng">
+        <div class="t"><span class="n">01</span>Camera reads</div>
+        <div class="c">every ANPR camera in the city · camera, time, plate image, vehicle crop</div>
+      </div>
+    </div>
+
+    <div class="varrow"><svg width="800" height="58"><line x1="400" y1="6" x2="400" y2="42" stroke="#1C2128" stroke-width="3"/><path d="M389 40 L400 55 L411 40 Z" fill="#1C2128"/></svg></div>
+
+    <div class="row">
+      <div class="box eng">
+        <div class="t"><span class="n">02</span>Plate detection + OCR</div>
+        <div class="c">YOLO plate detector + fast-plate-ocr, both fine-tuned on real Indian plates · outputs a probability for every character, not one string</div>
+        <div class="pill">or the city simulator — same format, with ground truth</div>
+      </div>
+    </div>
+
+    <div class="varrow"><svg width="800" height="58"><line x1="400" y1="6" x2="400" y2="42" stroke="#1C2128" stroke-width="3"/><path d="M389 40 L400 55 L411 40 Z" fill="#1C2128"/></svg></div>
+
+    <div class="row">
+      <div class="box gate">
+        <span class="gate-tag">Gate</span>
+        <div class="t"><span class="n">03</span>Spatio-temporal gate</div>
+        <div class="c">which earlier reads could this vehicle physically be? road network + <span class="nw">travel time, congestion-aware</span></div>
+      </div>
+      <div class="branch">
+        <div class="harrow"><span class="lbl">impossible</span><svg width="140" height="20"><line x1="0" y1="10" x2="122" y2="10" stroke="#8E3B27" stroke-width="3"/><path d="M120 0 L136 10 L120 20 Z" fill="#8E3B27"/></svg></div>
+        <div class="stop">
+          <span class="k">Controlled stop</span>
+          <div class="t">Cloned-plate alert</div>
+          <div class="c">same plate, two places, faster than 120 km/h and a different-looking vehicle — <span class="nw">flagged, never merged</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="varrow"><svg width="800" height="58"><line x1="400" y1="6" x2="400" y2="42" stroke="#1C2128" stroke-width="3"/><path d="M389 40 L400 55 L411 40 Z" fill="#1C2128"/></svg></div>
+
+    <div class="row">
+      <div class="box evi">
+        <div class="t"><span class="n">04</span>Three pieces of evidence</div>
+        <div class="subs">
+          <div class="sub"><h4>Plate</h4><p>character-by-character agreement of two OCR distributions</p></div>
+          <div class="plus">+</div>
+          <div class="sub"><h4>Appearance</h4><p>do the two vehicle crops look alike?</p></div>
+          <div class="plus">+</div>
+          <div class="sub"><h4>Travel time</h4><p>is the gap plausible on this road at this hour?</p></div>
+        </div>
+        <div class="sum">each is a log-likelihood ratio <span class="ar">→</span> they simply add</div>
+      </div>
+    </div>
+
+    <div class="varrow"><svg width="800" height="58"><line x1="400" y1="6" x2="400" y2="42" stroke="#1C2128" stroke-width="3"/><path d="M389 40 L400 55 L411 40 Z" fill="#1C2128"/></svg></div>
+
+    <div class="row">
+      <div class="box gate">
+        <span class="gate-tag">Decision</span>
+        <div class="t"><span class="n">05</span>Global assignment — min-cost flow</div>
+        <div class="c">solves the whole city at once: every read belongs to exactly one vehicle · <span class="nw">30-min sliding windows</span></div>
+      </div>
+      <div class="branch">
+        <div class="harrow"><span class="lbl">weak evidence</span><svg width="140" height="20"><line x1="0" y1="10" x2="122" y2="10" stroke="#8E3B27" stroke-width="3"/><path d="M120 0 L136 10 L120 20 Z" fill="#8E3B27"/></svg></div>
+        <div class="stop">
+          <span class="k">Controlled stop</span>
+          <div class="t">Not linked</div>
+          <div class="c">the read starts its own journey — the engine would rather split than invent a journey</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="varrow"><svg width="800" height="58"><line x1="400" y1="6" x2="400" y2="42" stroke="#1C2128" stroke-width="3"/><path d="M389 40 L400 55 L411 40 Z" fill="#1C2128"/></svg></div>
+
+    <div class="row">
+      <div class="box evi">
+        <div class="t"><span class="n">06</span>Consensus plate repair</div>
+        <div class="c">fuse every read along a journey, character by character · single read <span class="nw"><b>87.8%</b> → <b>99.95%</b> with 4+ reads</span></div>
+      </div>
+    </div>
+
+    <!-- split into two outputs: box centres at 190 and 610 (each box 380 wide, 40 gap) -->
+    <div class="varrow" style="height:66px"><svg width="800" height="66"><path d="M400 6 V26 M190 26 H610 M190 26 V50 M610 26 V50" stroke="#1C2128" stroke-width="3" fill="none" stroke-linejoin="round"/><path d="M179 48 L190 63 L201 48 Z M599 48 L610 63 L621 48 Z" fill="#1C2128"/></svg></div>
+
+    <div class="row pair">
+      <div class="box out">
+        <div class="t"><span class="n">07</span>Traffic analytics</div>
+        <div class="c">heatmaps · corridor speeds · OD flows · bottlenecks · flow trends</div>
+      </div>
+      <div class="box out">
+        <div class="t"><span class="n">07</span>Real-time alerts</div>
+        <div class="c">probabilistic watchlist · cloned plates · impossible travel · <span class="nw">route anomalies</span></div>
+      </div>
+    </div>
+
+    <div class="varrow" style="height:66px"><svg width="800" height="66"><path d="M190 4 V28 M610 4 V28 M190 28 H610 M400 28 V50" stroke="#1C2128" stroke-width="3" fill="none" stroke-linejoin="round"/><path d="M389 48 L400 63 L411 48 Z" fill="#1C2128"/></svg></div>
+
+    <div class="row">
+      <div class="box final">
+        <div class="t"><span class="n">08</span>Operator console</div>
+        <div class="c">live GIS map, journey replay and a WHY panel for every link · <span class="nw">FastAPI + React + MapLibre</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- legend -->
+  <div class="legend">
+    <span class="lk">Legend</span>
+    <span class="i"><span class="sw eng"></span>engine step</span>
+    <span class="i"><span class="sw evi"></span>evidence &amp; repair</span>
+    <span class="i"><span class="sw gate"></span>gate / decision</span>
+    <span class="i"><span class="sw out"></span>output</span>
+    <span class="i"><span class="sw stp"></span>controlled stop</span>
+    <span class="i"><span class="sw final"></span>final output</span>
+  </div>
+
+  <div class="footer">
+    <div class="big">One probability per pair of reads, one decision for the whole city.</div>
+    <div class="small">Smart India Hackathon · SIH26127 · Bharat Electronics Ltd.</div>
+  </div>
+
+</div>
+</body>
+</html>
