@@ -55,8 +55,9 @@ read belongs to exactly one vehicle. Once journeys exist, the reads along them a
 Perception and linking meet at a single contract, `DetectionEvent`: the linking engine cannot tell a real camera
 from the city simulator. The simulator is what makes the tracking claims measurable — no public dataset has
 city-wide multi-camera plate reads *with* the true journeys — and its noise is pinned to published real-world
-figures by tests. Design and maths: [docs/architecture.md](docs/architecture.md) · every non-obvious choice
-and why: [docs/decisions.md](docs/decisions.md).
+figures by tests. Design and maths: [docs/architecture.md](docs/architecture.md) · how each side is built:
+[docs/backend.md](docs/backend.md) and [docs/frontend.md](docs/frontend.md) · every non-obvious choice and why:
+[docs/decisions.md](docs/decisions.md).
 
 ## What it does
 
