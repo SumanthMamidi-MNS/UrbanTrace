@@ -11,7 +11,7 @@ engine. This is deliberately the "conditions drift after you've deployed
 and calibrated" scenario (you don't get to instantly retune your plate-
 confusion prior when the weather gets worse), not a re-fit-per-point one:
 Baseline A has no fitted model to go stale, so this is the fair, realistic
-way to ask whether SUTRA's edge holds up (or grows) as the field gets
+way to ask whether UrbanTrace's edge holds up (or grows) as the field gets
 harder, not just whether a freshly-retuned model can always catch up.
 
 OCR noise axis: `CorruptionConfig.p_char_correct` is swept (p_occlude held

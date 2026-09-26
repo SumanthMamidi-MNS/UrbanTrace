@@ -11,9 +11,11 @@ Fine-tuning on real data (once the user's real crops + a labelled CSV exist):
     python -m engine.perception.train_ocr \\
         --train-csv path/to/real_train_labels.csv \\
         --val-csv   path/to/real_val_labels.csv \\
-        --init-checkpoint C:/sutra-data/ocr/runs/synth/best.pt \\
-        --run-dir C:/sutra-data/ocr/runs/real_finetune \\
+        --init-checkpoint <data_dir>/ocr/runs/synth/best.pt \\
+        --run-dir <data_dir>/ocr/runs/real_finetune \\
         --epochs 15 --lr 1e-4
+
+(`<data_dir>` is `URBANTRACE_DATA_DIR`, see `engine.paths`.)
 
 `--init-checkpoint` warm-starts the model weights only (fresh optimizer/
 epoch count) -- the fine-tuning entry point. `--resume` instead restores
@@ -38,6 +40,7 @@ from PIL import Image
 from torch.amp import GradScaler, autocast
 from torch.utils.data import ConcatDataset, DataLoader, Dataset
 
+from engine.paths import get_data_dir
 from engine.perception.crnn import (
     CRNN,
     IMG_HEIGHT,
@@ -195,7 +198,7 @@ def main() -> None:
         ),
     )
     parser.add_argument("--extra-root", type=Path, default=None)
-    parser.add_argument("--run-dir", type=Path, default=Path("C:/sutra-data/ocr/runs/default"))
+    parser.add_argument("--run-dir", type=Path, default=get_data_dir() / "ocr/runs/default")
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=1e-3)

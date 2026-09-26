@@ -1,28 +1,41 @@
 [project]
-name = "sutra"
+name = "urbantrace"
 version = "0.1.0"
-description = "SUTRA — City-Wide AI Engine for Multi-Camera ANPR Trajectory Tracking (SIH26127)"
+description = "UrbanTrace — City-Wide AI Engine for Multi-Camera ANPR Trajectory Tracking (SIH26127)"
 requires-python = ">=3.12"
 dependencies = [
+    # Runtime set only: what `uvicorn api.main:app`, `python -m sim.generate`
+    # and `python -m api.ingest` (including --build-demo, which pulls in
+    # engine.calibration.fit_priors) actually import. scipy is referenced
+    # only in a code comment (engine/association/gating.py) and by eval/;
+    # scikit-learn is used only by engine/calibration/calibrate.py (an
+    # eval-only module); httpx is used only by tests (FastAPI's TestClient).
+    # All three move to the eval/dev extras below to keep the runtime image
+    # small.
     "pydantic>=2",
     "numpy",
-    "scipy",
-    "scikit-learn",
     "networkx",
     "rapidfuzz",
     "pyyaml",
     "typer",
     "rich",
     "fastapi",
-    "uvicorn[standard]",
+    "uvicorn",
+    "websockets",
     "sqlalchemy",
-    "httpx",
 ]
 
 [project.optional-dependencies]
+# Needed by engine/calibration/calibrate.py and eval/ scripts (baselines.py,
+# metrics.py) -- never imported at runtime by the API, sim, or ingest.
+eval = [
+    "scipy",
+    "scikit-learn",
+]
 dev = [
     "pytest",
     "ruff",
+    "httpx",
     # Needed only to run tests/test_synth_plate_safety.py (renders plate
     # images to verify the OCR renderer's character-containment guarantee)
     # under the main venv, per the reviewer's explicit requirement that
@@ -31,6 +44,7 @@ dev = [
     # remains confined to the separate OCR venv.
     "pillow",
     "opencv-python-headless",
+    "urbantrace[eval]",
 ]
 
 [build-system]

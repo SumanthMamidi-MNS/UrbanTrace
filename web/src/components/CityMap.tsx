@@ -130,7 +130,7 @@ export function CityMap({ city, cameraStats, highlightCameras, lines, points, la
     })
     map.touchZoomRotate.disableRotation()
     mapRef.current = map
-    if (import.meta.env.DEV) (window as unknown as { __sutraMap?: MLMap }).__sutraMap = map
+    if (import.meta.env.DEV) (window as unknown as { __urbantraceMap?: MLMap }).__urbantraceMap = map
 
     map.on('load', () => {
       map.addSource('roads', { type: 'geojson', data: roadsGeoJSON(city) })

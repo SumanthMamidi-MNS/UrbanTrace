@@ -1,5 +1,5 @@
-"""Error analysis of the FULL-CITY SUTRA run already on disk (architecture.md
-§8's headline scoreboard, eval/reports/trajectory_metrics.json): SUTRA
+"""Error analysis of the FULL-CITY UrbanTrace run already on disk (architecture.md
+§8's headline scoreboard, eval/reports/trajectory_metrics.json): UrbanTrace
 predicts 18,483 trajectories for 19,995 true vehicles over data/run1's
 107,234 events -- i.e. it OVER-MERGES. This module answers WHY, by reading
 the already-solved data/run1/pipeline/trajectories.jsonl plus
@@ -457,7 +457,7 @@ def build_report(data_dir: Path = DATA_DIR, pipeline_dir: Path = PIPELINE_DIR) -
     share_explained = pbd["share_wrong_links_explained_by_negative_total_or_prior_bug"]
 
     headline = (
-        f"SUTRA predicts {merges['n_predicted_trajectories']} trajectories for "
+        f"UrbanTrace predicts {merges['n_predicted_trajectories']} trajectories for "
         f"{splits['n_gt_vehicles']} true vehicles (over-merging). Of "
         f"{merges['n_wrong_adjacent_transitions']} wrongly-made adjacent links across "
         f"{merges['n_trajectories_containing_a_merge']} merged trajectories "
@@ -486,7 +486,7 @@ def build_report(data_dir: Path = DATA_DIR, pipeline_dir: Path = PIPELINE_DIR) -
 
     return {
         "description": (
-            "Error analysis of the ALREADY-SOLVED full-city SUTRA run, measured with the "
+            "Error analysis of the ALREADY-SOLVED full-city UrbanTrace run, measured with the "
             "FIXED prior of 5 expected candidates (pre-fix) -- engine/scoring/fusion.py's "
             "prior_log_odds is currently -log(DEFAULT_EXPECTED_CANDIDATES-1)=-log(4) for "
             "EVERY link regardless of the gate's actual ~218 candidates/event, a known bug "

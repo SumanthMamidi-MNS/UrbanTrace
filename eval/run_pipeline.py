@@ -190,9 +190,14 @@ def main(
             "default (if non-zero) was chosen from."
         ),
     ),
+    report: Path = typer.Option(
+        Path("eval/reports/trajectory_metrics.json"),
+        "--report",
+        help="Where to write the metrics report (tests point this at a temp file).",
+    ),
 ) -> None:
     out.mkdir(parents=True, exist_ok=True)
-    report_path = Path("eval/reports/trajectory_metrics.json")
+    report_path = report
     report_path.parent.mkdir(parents=True, exist_ok=True)
 
     config = json.loads((data / "config.json").read_text(encoding="utf-8"))
@@ -305,7 +310,7 @@ def main(
         f"for timing projection only. Real trajectory numbers need the full run."
         if is_prefix_run
         else (
-            "FULL-dataset trajectory-level result (SUTRA vs Baseline A, exact plate "
+            "FULL-dataset trajectory-level result (UrbanTrace vs Baseline A, exact plate "
             "match). architecture.md section 8's headline scoreboard."
         )
     )

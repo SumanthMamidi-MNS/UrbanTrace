@@ -1,4 +1,4 @@
-# SUTRA web console
+# UrbanTrace web console
 
 React + Vite + TypeScript + Tailwind v4, MapLibre GL (v5), Recharts, TanStack Query.
 Built against the frozen contract in `../docs/api-contract.md`.
@@ -25,7 +25,7 @@ VITE_USE_MOCK=false npm run dev            # bash
 $env:VITE_USE_MOCK='false'; npm run dev    # PowerShell
 ```
 
-or put `VITE_USE_MOCK=false` in `web/.env.local` (see `.env.example`). Nothing else changes: the mock implements the same `SutraApi` interface (`src/api/client.ts`) with contract-exact types (`src/api/types.ts`).
+or put `VITE_USE_MOCK=false` in `web/.env.local` (see `.env.example`). Nothing else changes: the mock implements the same `UrbanTraceApi` interface (`src/api/client.ts`) with contract-exact types (`src/api/types.ts`).
 
 ## Checks
 

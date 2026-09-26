@@ -16,7 +16,7 @@ full-city scale) gives every link an unearned `-log(4) = -1.39` prior
 instead of the correct `-log(217) ~= -5.4` -- roughly 4 nats of free
 evidence on every single link, independent of how genuinely ambiguous that
 link was. `eval/reports/error_analysis.json` traced 93.2% of full-city
-SUTRA's wrong links to this plus the entry/exit arc-cost bug fixed in
+UrbanTrace's wrong links to this plus the entry/exit arc-cost bug fixed in
 `engine.association.mincostflow`/`engine.association.window`.
 
 `engine.association.window._solve_one_window` now computes each successor's

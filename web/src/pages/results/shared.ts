@@ -15,7 +15,7 @@ export const CHART = {
     labelStyle: { color: '#7d8b9b' },
     itemStyle: { color: '#eef3f8' },
   },
-  /** SUTRA / primary series */
+  /** UrbanTrace / primary series */
   accent: '#3cc4d8',
   /** comparison / baseline series (drawn dashed as a second, non-colour cue) */
   neutral: '#7d8b9b',

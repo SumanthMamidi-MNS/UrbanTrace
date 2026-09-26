@@ -81,6 +81,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from engine.contracts.plate import BLANK
+from engine.paths import get_data_dir
 
 # Mirrors sim/vehicles.py's STATE_CODES exactly -- kept as an independent
 # constant (see module docstring: sim/vehicles.py cannot be imported here).
@@ -112,7 +113,15 @@ STYLE_COLORS = {
 # jitter each RGB channel independently within +-COLOR_JITTER.
 COLOR_JITTER = 16
 
-FONT_PATH = Path("C:/sutra-data/ocr/fonts/SairaCondensed-Bold.ttf")
+_VENDORED_FONT_PATH = Path(__file__).resolve().parent / "assets/fonts/SairaCondensed-Bold.ttf"
+_DATA_DIR_FONT_PATH = get_data_dir() / "ocr/fonts/SairaCondensed-Bold.ttf"
+# Prefer a font dropped in the data dir (e.g. a different weight/variant for
+# local experimentation) if present, otherwise fall back to the font vendored
+# into the repo (SIL OFL-licensed, see engine/perception/assets/fonts/OFL.txt)
+# so this module -- and tests/test_synth_plate_safety.py, which imports it
+# under the main venv -- works on a fresh clone with no URBANTRACE_DATA_DIR
+# set and no machine-local font directory.
+FONT_PATH = _DATA_DIR_FONT_PATH if _DATA_DIR_FONT_PATH.exists() else _VENDORED_FONT_PATH
 
 ONE_LINE_SIZE = (400, 100)
 TWO_LINE_SIZE = (240, 180)
@@ -802,7 +811,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Render synthetic Indian plates for OCR pre-training."
     )
-    parser.add_argument("--out", type=Path, default=Path("C:/sutra-data/ocr/synth"))
+    parser.add_argument("--out", type=Path, default=get_data_dir() / "ocr/synth")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--n-train", type=int, default=60000)
     parser.add_argument("--n-val", type=int, default=5000)

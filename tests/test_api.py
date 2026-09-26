@@ -1,4 +1,4 @@
-"""End-to-end tests for the SUTRA FastAPI layer (docs/api-contract.md).
+"""End-to-end tests for the UrbanTrace FastAPI layer (docs/api-contract.md).
 
 Builds a TINY dataset (8 cameras, 150 vehicles, 2h, with a clone fraction so
 alerts exist), ingests it via the `--build-demo` path into a temp SQLite
@@ -46,7 +46,7 @@ def _assert_finite(obj, path: str = "$") -> None:
 @pytest.fixture(scope="module")
 def tiny_dataset(tmp_path_factory) -> tuple[Path, object]:
     data_dir = tmp_path_factory.mktemp("tiny_data")
-    db_path = tmp_path_factory.mktemp("tiny_db") / "sutra.db"
+    db_path = tmp_path_factory.mktemp("tiny_db") / "urbantrace.db"
 
     city = generate_city(n_cameras=N_CAMERAS, seed=1)
     cfg = CorruptionConfig(clone_fraction=CLONE_FRACTION)
@@ -82,7 +82,7 @@ def tiny_dataset(tmp_path_factory) -> tuple[Path, object]:
 @pytest.fixture()
 def client(tiny_dataset, monkeypatch):
     db_path, _ = tiny_dataset
-    monkeypatch.setenv("SUTRA_DB_PATH", str(db_path))
+    monkeypatch.setenv("URBANTRACE_DB_PATH", str(db_path))
     from api.main import app
 
     with TestClient(app) as c:
@@ -699,3 +699,35 @@ def test_ws_live_delivers_clock_and_event(client: TestClient):
         assert "clock" in seen_types
         assert "event" in seen_types
     client.post("/api/replay", json={"action": "reset"})
+
+
+def test_reingest_clears_stale_watchlist_hits_but_keeps_entries(tmp_path):
+    """Re-ingesting replaces every event and trajectory id, so hits pointing
+    at the old ids must go; the operator's watchlist entries must survive."""
+    import datetime as dt
+
+    from api.db import WatchlistEntryRow, WatchlistHitRow, make_engine, make_session_factory
+
+    city = generate_city(n_cameras=N_CAMERAS, seed=1)
+    ds = generate_dataset_with_city(city, n_vehicles=60, hours=1, seed=7)
+    write_dataset(ds, tmp_path / "d", {"cameras": N_CAMERAS, "vehicles": 60, "hours": 1, "seed": 7})
+    db_path = tmp_path / "urbantrace.db"
+    kwargs = dict(data_dir=tmp_path / "d", db_path=db_path, build_demo=True, train_vehicles=60)
+    run_ingest(**kwargs)
+
+    factory = make_session_factory(make_engine(db_path))
+    now = dt.datetime(2026, 1, 1)
+    with factory() as s:
+        s.add(WatchlistEntryRow(entry_id="wl_1", pattern="MH12AB1234",
+                                canonical_patterns=["MH12AB1234"], reason="t", created_at=now))
+        s.add(WatchlistHitRow(hit_id="h_1", entry_id="wl_1", pattern="MH12AB1234",
+                              event_id="evt_old", trajectory_id="traj_old", camera_id="cam_0000",
+                              timestamp=now, probability=0.9, matched_on="read",
+                              plate_read="MH12AB1234"))
+        s.commit()
+
+    run_ingest(**kwargs)
+
+    with factory() as s:
+        assert s.query(WatchlistHitRow).count() == 0
+        assert s.query(WatchlistEntryRow).count() == 1

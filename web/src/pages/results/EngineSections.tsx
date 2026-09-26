@@ -124,7 +124,7 @@ export function DetectorSection({ holdout, evalR }: { holdout?: Obj; evalR?: Obj
 // ------------------------------------------------------------------ linking vs baselines
 
 const ABLATION_LABEL: Record<string, string> = {
-  all_three: 'SUTRA · plate + appearance + travel time',
+  all_three: 'UrbanTrace · plate + appearance + travel time',
   all_three_greedy_chaining: 'Same evidence, greedy chaining',
   plate_plus_appearance: 'Plate + appearance',
   plate_plus_kinematic: 'Plate + travel time',
@@ -152,15 +152,15 @@ function FullRun({ r }: { r: Obj }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-3">
-        <Tile big label="SUTRA IDF1" value={dec(num(s.idf1), 3)} tone="accent" sub={`${fmtNum(num(s.id_switches))} ID switches`} />
+        <Tile big label="UrbanTrace IDF1" value={dec(num(s.idf1), 3)} tone="accent" sub={`${fmtNum(num(s.id_switches))} ID switches`} />
         <Tile big label="Exact plate match IDF1" value={dec(num(b.idf1), 3)} tone="muted" sub={`${fmtNum(num(b.id_switches))} ID switches`} />
       </div>
       <table className="w-full text-xs">
-        <caption className="sr-only">Full-dataset trajectory metrics, SUTRA against exact plate matching</caption>
+        <caption className="sr-only">Full-dataset trajectory metrics, UrbanTrace against exact plate matching</caption>
         <thead>
           <tr className="text-[10px] tracking-wider text-fg-dim uppercase">
             <th className="py-1 text-left font-semibold">Metric</th>
-            <th className="px-2 py-1 text-right font-semibold text-accent">SUTRA</th>
+            <th className="px-2 py-1 text-right font-semibold text-accent">UrbanTrace</th>
             <th className="px-2 py-1 text-right font-semibold">Exact match</th>
           </tr>
         </thead>
@@ -244,10 +244,10 @@ export function LinkingSection({ traj, baselines, ablation }: { traj?: Obj; base
             </div>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-fg-dim">
               <span className="flex items-center gap-1.5">
-                <span className="inline-block h-2 w-3 rounded-[1px]" style={{ background: CHART.accent }} /> SUTRA (all evidence, global solver)
+                <span className="inline-block h-2 w-3 rounded-[1px]" style={{ background: CHART.accent }} /> UrbanTrace (all evidence, global solver)
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="inline-block h-2 w-3 rounded-[1px]" style={{ background: '#3a4e60' }} /> SUTRA with channels removed
+                <span className="inline-block h-2 w-3 rounded-[1px]" style={{ background: '#3a4e60' }} /> UrbanTrace with channels removed
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="inline-block h-2 w-3 rounded-[1px]" style={{ background: '#566374' }} /> Baselines (no scoring)
@@ -314,7 +314,7 @@ export function StressSection({ r }: { r?: Obj }) {
 
   const lines = (x: string) => (
     <>
-      <Line name="SUTRA" dataKey="sutra" stroke={CHART.accent} strokeWidth={2.5} dot={{ r: 4, fill: CHART.accent, stroke: '#0f141a', strokeWidth: 2 }} isAnimationActive={false}>
+      <Line name="UrbanTrace" dataKey="sutra" stroke={CHART.accent} strokeWidth={2.5} dot={{ r: 4, fill: CHART.accent, stroke: '#0f141a', strokeWidth: 2 }} isAnimationActive={false}>
         <LabelList dataKey="sutra" position="top" formatter={(v: unknown) => Number(v).toFixed(2)} style={{ fill: '#6fdcec', fontSize: 10, fontFamily: 'var(--font-mono)' }} />
       </Line>
       <Line name="Exact plate match" dataKey="base" stroke={CHART.neutral} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 4, fill: CHART.neutral, stroke: '#0f141a', strokeWidth: 2 }} isAnimationActive={false}>
@@ -334,7 +334,7 @@ export function StressSection({ r }: { r?: Obj }) {
       <div className="px-3 pt-3">
         {first && last && first.gap !== undefined && last.gap !== undefined && (
           <p className="text-[13px] text-fg-strong">
-            As measured plate accuracy falls from <b className="num font-mono">{pct(first.acc)}</b> to <b className="num font-mono">{pct(last.acc)}</b>, SUTRA’s IDF1 stays between{' '}
+            As measured plate accuracy falls from <b className="num font-mono">{pct(first.acc)}</b> to <b className="num font-mono">{pct(last.acc)}</b>, UrbanTrace’s IDF1 stays between{' '}
             <b className="num font-mono text-accent-strong">
               {Math.min(...ocr.map((p) => p.sutra)).toFixed(3)}–{Math.max(...ocr.map((p) => p.sutra)).toFixed(3)}
             </b>{' '}

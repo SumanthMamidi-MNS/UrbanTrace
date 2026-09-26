@@ -1,11 +1,11 @@
 """Ingest a simulated dataset (+ optionally the pipeline's linked
-trajectories) into the SUTRA SQLite database.
+trajectories) into the UrbanTrace SQLite database.
 
 Usage:
     python -m api.ingest --data data/run1 \\
-        --trajectories data/run1/pipeline/trajectories.jsonl --db data/sutra.db
+        --trajectories data/run1/pipeline/trajectories.jsonl --db data/urbantrace.db
 
-    python -m api.ingest --data data/run1 --db data/sutra.db --build-demo
+    python -m api.ingest --data data/run1 --db data/urbantrace.db --build-demo
 
 If `--trajectories` is omitted (or the file does not exist) and
 `--build-demo` is passed, trajectories are built in-process: priors are
@@ -39,6 +39,7 @@ from api.db import (
     EventRow,
     MetaRow,
     TrajectoryRow,
+    WatchlistHitRow,
     init_db,
     make_engine,
     make_session_factory,
@@ -340,6 +341,9 @@ def run_ingest(
         session.query(AlertRow).delete()
         session.query(CameraRow).delete()
         session.query(MetaRow).delete()
+        # Hits reference event/trajectory ids that are being replaced; the
+        # operator's watchlist entries themselves are kept.
+        session.query(WatchlistHitRow).delete()
 
         for c in city.cameras:
             session.add(

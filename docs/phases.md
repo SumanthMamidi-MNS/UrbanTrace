@@ -1,4 +1,4 @@
-# Execution plan — SUTRA (SIH26127)
+# Execution plan — UrbanTrace (SIH26127)
 
 Living plan, organised by what the PRD requires, not by calendar. Each workstream lists what is done, what remains, and what "done" means. Detailed history is in `decisions.md` (why) and `memory.md` (what was built when).
 
@@ -10,6 +10,14 @@ The PRD asks for **four components**. This plan is organised around them, plus t
 
 | PRD component | Status |
 |---|---|
+| 1. High-precision OCR module (deep learning, >90% on real Indian plates) | **Built and measured on real plates: 81.0% whole-plate / 94.3% character** — >90% met per character, **not** per whole plate. Fine-tuned reader is the video path default. Detector: held-out video recall 0.51 |
+| 2. Trajectory reconstruction engine | **Done** — congested full-city IDF1 **0.9716** vs 0.8745 (uncongested 0.9914); direction of travel on the map |
+| 3. City traffic analytics dashboard | **Done** — heatmaps (density/speed, live), corridor speeds, OD, volumes, flow trend, bottleneck ranking |
+| 4. Alert system | **Done** — probabilistic watchlist (single read + trajectory consensus), clone, impossible-travel, route anomalies, live |
+| Evaluation & evidence | **Done** — rerun on the congested day; gate recall hole found and fixed |
+| Packaging & GitHub readiness | **In progress** — renamed UrbanTrace, portfolio README, MIT licence, slim Docker, CI; Docker image not yet built (no working daemon here) |
+
+---|---|
 | 1. High-precision OCR module (deep learning, >90% on real Indian plates) | **Built and measured on real plates: 81.0% whole-plate / 94.3% character** — >90% met per character, **not** per whole plate. Detector: held-out video recall 0.51 (small far plates are the main weakness) |
 | 2. Trajectory reconstruction engine (query a plate → chronological path on a GIS map) | Built and verified; full-city IDF1 **0.9914** vs 0.8746. Direction of travel in progress |
 | 3. City traffic analytics dashboard (heatmaps, speeds, densities, OD, congestion, real time) | Partly built — heatmap, speeds and flow trend in progress (contract v2) |
@@ -17,7 +25,7 @@ The PRD asks for **four components**. This plan is organised around them, plus t
 | Evaluation & evidence | Built; kinematic defect fixed; link threshold calibrated on a training day |
 | Packaging & demo | Built; Docker image never actually built |
 
-Last checkpoint commit: `3761df9` (local only, not pushed). Substantial uncommitted work since — next commit after the v2 features land and tests pass.
+Last checkpoint commit: `ec38bd3` (local only, not pushed). Rename, packaging and GitHub-readiness work is committed next, after tests pass.
 
 ---
 
@@ -30,7 +38,7 @@ Last checkpoint commit: `3761df9` (local only, not pushed). Substantial uncommit
 **Remaining:**
 - [ ] **Whole-plate accuracy is 81.0%, below the PRD's 90%** (character level 94.3% is above). Next lever: more real training plates — the team is sourcing the ~16k-image "in the wild" dataset.
 - [ ] Small, distant plates in multi-lane footage: detector recall 0.51 on a held-out video.
-- [ ] Wire the fine-tuned fast-plate-ocr model into `video_to_events.py` as the default reader (currently the CRNN path).
+- [x] Fine-tuned fast-plate-ocr is the default reader in `video_to_events.py` (CRNN kept as `--reader crnn`).
 
 **Done means:** measured whole-plate accuracy >90% on a held-out, human-verified real Indian plate set, reported with its size and conditions; a sample clip runs end to end into the console.
 
@@ -40,7 +48,7 @@ Last checkpoint commit: `3761df9` (local only, not pushed). Substantial uncommit
 
 **Remaining:**
 - [x] Kinematic null fixed — ablation: plate+kinematic 0.977 > plate-only 0.968; all three 0.992 is the best row.
-- [ ] Show direction of travel on the trajectory map (the PRD names "direction" explicitly).
+- [x] Show direction of travel on the trajectory map (the PRD names "direction" explicitly).
 
 **Done means:** in the ablation, every added channel improves or holds IDF1, and "all three" is the best row.
 
@@ -49,9 +57,9 @@ Last checkpoint commit: `3761df9` (local only, not pushed). Substantial uncommit
 **Done:** OD matrix (5 zones), volumes per camera over time, corridor travel times with congestion index, KPI summary.
 
 **Remaining:**
-- [ ] **Traffic density heatmap** on the map, including a **live** mode driven by the replay stream.
-- [ ] **Average vehicle speeds** per corridor and per camera, from trajectory link distances and times.
-- [ ] Traffic-flow trend view (volumes over time across the network) and congestion bottleneck ranking surfaced on the dashboard.
+- [x] **Traffic density heatmap** on the map, including a **live** mode driven by the replay stream.
+- [x] **Average vehicle speeds** per corridor and per camera, from trajectory link distances and times.
+- [x] Traffic-flow trend view (volumes over time across the network) and congestion bottleneck ranking surfaced on the dashboard.
 
 **Done means:** every analytic named in the PRD — heatmap, average speeds, route densities, OD, congestion bottlenecks, flow trends — is visible in the console from real API data.
 
@@ -60,8 +68,8 @@ Last checkpoint commit: `3761df9` (local only, not pushed). Substantial uncommit
 **Done:** cloned-plate, impossible-travel and looping-route alerts, streamed live.
 
 **Remaining:**
-- [ ] **Blacklist / watchlist:** operators add plates (full or partial with `?`); matching uses the plate posterior, so a watchlisted vehicle is still caught when its plate is misread. Alerts fire in real time as reads arrive, with match confidence.
-- [ ] Watchlist management in the console (add, remove, list, see hits).
+- [x] **Blacklist / watchlist:** operators add plates (full or partial with `?`); matching uses the plate posterior, so a watchlisted vehicle is still caught when its plate is misread. Alerts fire in real time as reads arrive, with match confidence.
+- [x] Watchlist management in the console (add, remove, list, see hits).
 
 **Done means:** a watchlisted plate raises a real-time alert during replay, including on a read with a misread character.
 
@@ -72,16 +80,18 @@ Last checkpoint commit: `3761df9` (local only, not pushed). Substantial uncommit
 **Remaining:**
 - [x] Ablation and full city rerun after the kinematic fix.
 - [x] OCR accuracy reports (synthetic, real progression, fast-plate-ocr) and detector reports.
-- [ ] Results page shows ablation, baselines and stress sweep.
+- [x] Results page shows ablation, baselines and stress sweep.
 
-## W6. Packaging & demo
+## W6. Packaging, demo & GitHub readiness
 
-**Done:** one-command local serve (verified), docker-compose + Dockerfile, Makefile and `make.ps1`, README with results, demo script, judge Q&A.
+**Done:** one-command local serve (verified), Makefile and `make.ps1`, demo script and judge Q&A refreshed for the congested run, rename to **UrbanTrace** with portable paths (`engine/paths.py`), portfolio README front page (tagline, PRD components, results at a glance, mermaid architecture), MIT licence, slim runtime Docker image (runtime deps only), CI workflow, vendored OFL font so tests pass on a fresh clone, demo DB re-ingested clean.
 
 **Remaining:**
-- [ ] Actually build and run the Docker image on a machine with a working Docker daemon.
-- [ ] Refresh the demo script and README for W1–W4 additions.
-- [ ] Final full test pass, lint, commit.
+- [ ] Build and run the Docker image on a machine with a working Docker daemon; record the real image size.
+- [ ] README screenshots (console captured from the real API).
+- [ ] Owner: create the GitHub repo, set About/topics, push.
+
+**Done means:** a fresh clone passes CI, the quickstart works from the README alone, and the image builds.
 
 ---
 
@@ -95,7 +105,7 @@ Last checkpoint commit: `3761df9` (local only, not pushed). Substantial uncommit
 ## Working rules for this project
 
 - Nothing is tuned on the evaluation set (run1, seed 42); training and tuning use separate seeds.
-- The SQLite database lives outside OneDrive (`%LOCALAPPDATA%\sutra\sutra.db`).
+- The SQLite database lives outside OneDrive (`URBANTRACE_DB_PATH`, default `%LOCALAPPDATA%\urbantrace\urbantrace.db`).
 
 ## Progress log (2026-09-25)
 

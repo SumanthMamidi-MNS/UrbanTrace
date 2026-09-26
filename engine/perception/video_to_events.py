@@ -48,6 +48,7 @@ from PIL import Image
 from engine.contracts.codec import encode_event_compact
 from engine.contracts.events import DetectionEvent, VehicleAttributes
 from engine.contracts.plate import SlotPosterior
+from engine.paths import get_data_dir
 from engine.perception.crnn import CRNN, IMG_HEIGHT, IMG_WIDTH, split_two_line_crop
 from engine.perception.ctc_to_slots import decode_plate_best_of_two
 from engine.perception.detect import DEFAULT_WEIGHTS_PATH, PlateDetector
@@ -59,13 +60,11 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp"}
 # Default fast-plate-ocr run: the fine-tuned checkpoint behind the measured
 # 81.0% whole-plate / 94.3% char accuracy on the held-out real test set (vs.
 # the CRNN's 44.3% whole-plate) -- see eval/reports and docs/decisions.md.
-# Made the default reader for this reason.
-DEFAULT_FPO_ONNX_PATH = Path(
-    "C:/sutra-data/ocr/fpo/runs/2026-09-25_17-56-29/best.onnx"
-)
-DEFAULT_FPO_PLATE_CONFIG_PATH = Path(
-    "C:/sutra-data/ocr/fpo/runs/2026-09-25_17-56-29/plate_config.yaml"
-)
+# Made the default reader for this reason. Resolved relative to
+# `URBANTRACE_DATA_DIR` (see `engine.paths`).
+_FPO_RUN_DIR = get_data_dir() / "ocr/fpo/runs/2026-09-25_17-56-29"
+DEFAULT_FPO_ONNX_PATH = _FPO_RUN_DIR / "best.onnx"
+DEFAULT_FPO_PLATE_CONFIG_PATH = _FPO_RUN_DIR / "plate_config.yaml"
 
 # One plate crop in -> (10 canonical SlotPosteriors, which_reading_won or
 # None). `which` is only meaningful for the CRNN's one-line/two-row

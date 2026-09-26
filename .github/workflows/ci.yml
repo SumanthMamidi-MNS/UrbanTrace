@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install package (dev extras)
+        run: pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      # URBANTRACE_DATA_DIR is intentionally NOT set here: the suite must
+      # pass (or skip cleanly) on a fresh clone with no machine-local data
+      # directory -- see engine/paths.py and
+      # tests/test_synth_plate_safety.py's vendored-font fallback.
+      - name: Test (pytest)
+        run: pytest
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit -p tsconfig.app.json
+
+      # VITE_USE_MOCK is unset here, so the app build defaults apply
+      # (web/README.md / web/src/api/client.ts).
+      - name: Build
+        run: npm run build

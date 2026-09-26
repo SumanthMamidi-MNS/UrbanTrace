@@ -99,7 +99,7 @@ export function Layout() {
   return (
     <div className="flex h-full min-h-0 bg-ink-900">
       <nav aria-label="Primary" className="flex w-[68px] shrink-0 flex-col items-stretch border-r border-ink-700 bg-ink-950">
-        <div className="flex h-12 items-center justify-center border-b border-ink-700" title="SUTRA">
+        <div className="flex h-12 items-center justify-center border-b border-ink-700" title="UrbanTrace">
           <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden>
             <path d="M4 22 C10 22 10 10 16 10 S22 22 28 22" fill="none" stroke="#3cc4d8" strokeWidth="2.4" strokeLinecap="round" />
             <circle cx="4" cy="22" r="2.4" fill="#3cc4d8" />
@@ -131,8 +131,10 @@ export function Layout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-ink-700 bg-ink-950 px-3">
           <div className="flex min-w-0 items-baseline gap-3">
-            <span className="text-[15px] font-bold tracking-[0.18em] text-fg-strong">SUTRA</span>
-            <span className="hidden truncate text-xs text-fg-dim lg:inline">City-wide ANPR trajectory linking</span>
+            <span className="text-[15px] font-bold tracking-[0.18em] text-fg-strong">UrbanTrace</span>
+            <span className="hidden min-w-0 truncate text-xs text-fg-dim lg:block" title="City-scale vehicle tracking that reasons in probabilities, not string matches.">
+              City-scale vehicle tracking that reasons in probabilities, not string matches.
+            </span>
             {USE_MOCK && (
               <span className="rounded-sm border border-caution-dim px-1.5 text-[10px] font-semibold tracking-wider text-caution uppercase" title="VITE_USE_MOCK=true: in-browser fixture data, no backend">
                 Mock data

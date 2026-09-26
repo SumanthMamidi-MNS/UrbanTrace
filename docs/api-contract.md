@@ -1,4 +1,4 @@
-# API contract — SUTRA (frozen)
+# API contract — UrbanTrace (frozen)
 
 The single source of truth between `api/` (engine side) and `web/` (UI side). Both sides build against this document. Changing it requires the lead's sign-off. `api/openapi.json` is generated from the implementation and must agree with this file.
 

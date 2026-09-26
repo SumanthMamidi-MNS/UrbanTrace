@@ -1,8 +1,6 @@
-# Architecture — SUTRA
+# Architecture — UrbanTrace
 
 **SIH26127 — City-Wide AI Engine for Multi-Camera ANPR Trajectory Tracking and Urban Traffic Analytics (BEL)**
-
-SUTRA = *Stitching Uncertain Traffic Reads into Actionable trajectories*. Sanskrit *sutra* = "thread" — the product threads isolated ANPR beads into one continuous journey.
 
 ---
 
@@ -89,7 +87,7 @@ L2  PERCEPTION  vehicle detect -> in-camera track -> best-shot -> plate OCR (per
 L1  INGEST  SimSource | VideoSource | CsvReplaySource  --> canonical DetectionEvent
 ```
 
-**L2 perception (the PRD's OCR module), as built:** plate detector (YOLO, approved pretrained plate weights) → plate crop → **CRNN + CTC recogniser** → CTC per-timestep probabilities mapped onto the 10-slot canonical plate by the plate grammar, keeping background mass on every character → `DetectionEvent` files in the standard on-disk format. It runs in its own environment (`C:\sutra-data\venv-ocr`, PyTorch + CUDA) and hands the engine nothing but event files, so the engine never imports PyTorch. Pre-trained on synthetic Indian HSRP plates rendered with the PRD's conditions (angle, blur, low light, glare, dirt, rain, low resolution); fine-tuned and **measured on a held-out real Indian plate set** — only that measurement supports the >90% claim.
+**L2 perception (the PRD's OCR module), as built:** plate detector (Ultralytics YOLO, pretrained plate weights **fine-tuned on Indian scenes**) → plate crop → **fast-plate-ocr (cct-s-v2-global) fine-tuned on real Indian plates** — the default reader — exported to ONNX; its per-slot probabilities are mapped onto the 10-slot canonical plate by the plate grammar, keeping background mass on every character (`engine/perception/fpo_adapter.py`) → `DetectionEvent` files in the standard on-disk format (`engine/perception/video_to_events.py`). Our own **CRNN + CTC recogniser** (`crnn.py`, `ctc_to_slots.py`) remains as the from-scratch baseline (`--reader crnn`). Perception runs in its own SEPARATE OCR venv (PyTorch + CUDA, onnxruntime) and hands the engine nothing but event files, so the engine never imports PyTorch. Pre-trained on synthetic Indian HSRP plates rendered with the PRD's conditions (angle, blur, low light, glare, dirt, rain, low resolution), fine-tuned and **measured once on a held-out real Indian plate set split by plate string**: 81.0% whole plate / 94.3% per character (`eval/reports/ocr_real_fpo_finetuned.json`).
 
 **The pivotal decision: L1 and L3 are separated by a hard contract.** The engine consumes `DetectionEvent`s and neither knows nor cares whether they came from a simulator or a real camera.
 
@@ -111,10 +109,10 @@ This is what makes the week survivable *and* the demo strong: the simulator give
 | Layer | Choice | Why |
 |---|---|---|
 | Engine / API | **Python 3.12, FastAPI, Pydantic v2** | ML ecosystem; async + WebSocket native; schema *is* the contract |
-| Numerics | **numpy, scipy, scikit-learn** | LR fitting, calibration (isotonic / Platt) |
+| Numerics | **numpy** (runtime); **scipy, scikit-learn** (`[eval]` extra only) | LR fitting at runtime; calibration and evaluation offline — kept out of the serving image |
 | Association | **own successive-shortest-paths solver** (`networkx` as test oracle) | float costs, optimal *k* in one pass — see §3 |
 | Gating | **road-graph + time-window gate** (primary), `rapidfuzz` deletion index (overflow only) | see §7 — plate-based blocking must never be the primary filter |
-| Perception (optional) | **Ultralytics YOLO** (vehicle + plate), **PaddleOCR / CRNN** (per-char logits), **OSNet / torchreid** (Re-ID) | pretrained, CPU-tolerable on short clips |
+| Perception (optional) | **Ultralytics YOLO** plate detector (fine-tuned), **fast-plate-ocr** recogniser (fine-tuned, ONNX), own **CRNN+CTC** baseline (PyTorch) | pretrained + fine-tuned on real Indian plates; separate OCR venv |
 | Storage | **SQLAlchemy + SQLite** (dev/demo), Postgres drop-in | zero-friction offline demo, same ORM scales up |
 | Frontend | **React + Vite + TypeScript + Tailwind** | fast, standard |
 | Map | **MapLibre GL, road graph rendered as GeoJSON** (no tile server) | open source, no API token, fully offline; the synthetic city's roads come straight from `/api/city` |
@@ -127,23 +125,27 @@ Deliberately **not** used this week: Kafka, Spark, TimescaleDB, Kubernetes. Reco
 ## 6. Folder structure
 
 ```
-SIH-Project-2/
-├─ docs/                 PRD . architecture . phases . decisions . memory
+UrbanTrace/
+├─ docs/                 PRD . architecture . phases . decisions . memory . api-contract . demo-script . judge-qa
 ├─ engine/
-│  ├─ contracts/         DetectionEvent, Trajectory, LinkEvidence (pydantic)
-│  ├─ sources/           sim_source.py . video_source.py . csv_source.py
-│  ├─ perception/        detect.py . ocr.py . reid.py . bestshot.py
+│  ├─ paths.py           URBANTRACE_DATA_DIR / URBANTRACE_DB_PATH resolution (no machine-specific paths)
+│  ├─ contracts/         DetectionEvent, Trajectory, plate codec, city graph, event store
+│  ├─ perception/        synthetic plates, CRNN baseline, fast-plate-ocr adapter/training, detector fine-tune, video_to_events
 │  ├─ scoring/           plate_lr.py . appearance_lr.py . kinematic_lr.py . fusion.py
-│  ├─ association/       gating.py . blocking.py . mincostflow.py . window.py
+│  ├─ association/       gating.py (congestion-aware) . blocking.py (overflow only) . mincostflow.py . window.py
 │  ├─ decode/            consensus.py . partial_search.py . clone_detect.py
-│  ├─ analytics/         od_matrix.py . corridor.py . volumes.py . anomalies.py
+│  ├─ analytics/         od_matrix . corridors (speeds) . volumes . heatmap . flow_trend . direction . anomalies
+│  ├─ alerts/            watchlist.py (probabilistic, single read + trajectory consensus)
 │  └─ calibration/       fit_priors.py . calibrate.py
-├─ sim/                  city graph, camera layout, vehicle/route generator, corruption model
-├─ api/                  FastAPI app, routers, websocket, db models
-├─ web/                  React app
-├─ eval/                 metrics.py . baselines.py . ablation.py . reports/
-└─ docker-compose.yml
+├─ sim/                  city graph, cameras, vehicles/routes, BPR congestion, corruption model
+├─ api/                  FastAPI app, routers (core, analytics, alerts, watchlist, replay, eval, ws), SQLite ingest
+├─ web/                  React + MapLibre operator console (mock mode for UI-only development)
+├─ eval/                 metrics, baselines, ablation, stress, calibration scripts . reports/ (evidence JSON)
+├─ tests/                pytest suite
+└─ Dockerfile . docker-compose.yml . Makefile . make.ps1
 ```
+
+Large artefacts (datasets, trained weights, OCR venv, generated runs) live outside git under `URBANTRACE_DATA_DIR`.
 
 ## 6b. API contract
 
@@ -155,7 +157,9 @@ Frozen in [`docs/api-contract.md`](api-contract.md): REST under `/api`, live str
 2. The event is persisted and pushed onto the live WebSocket feed.
 3. **Gating** finds candidate predecessors: events at cameras upstream in the road graph, within `[dt_min, dt_max]`.
 
-   > **The spatio-temporal gate is the primary and sufficient blocker — plate-based blocking is not.** At target scale (50 cameras, ~500 events/camera/hour, a 45-minute window) the gate already leaves only a few hundred candidates per event, all of which we score in full. Plate blocking is engaged *only* if a gate overflows a candidate budget.
+   > **The spatio-temporal gate is the primary and sufficient blocker — plate-based blocking is not.** At target scale (50 cameras, ~500 events/camera/hour, a 45-minute window) the gate already leaves only a few hundred candidates per event, all of which we score in full. Plate blocking is engaged *only* if a gate overflows a candidate budget (`DEFAULT_CANDIDATE_BUDGET = 4000`, a pure overflow valve: 0% engagement on the congested evaluation day).
+   >
+   > **The gate's window is congestion-aware.** Per camera pair and hour we fit a log-normal travel time and keep ±3σ, but the upper bound is floored at free-flow time × `CONGESTION_TAIL_FACTOR` (4.0) so jammed vehicles are never gated out; the lower bound stays at the v_max limit, which clone detection relies on. The gate may exclude the physically impossible, never the merely slow (rush-hour true-predecessor recall 0.69 → 0.993).
    >
    > This matters more than it looks. Using a plate index as the primary filter would silently reintroduce the exact brittleness we are attacking — a badly-misread plate would never surface as a candidate, so no amount of clever downstream scoring could recover it. The recall of the whole system is decided here.
 4. **Scoring** computes the three LRs and sums log-odds for each candidate pair.
@@ -171,7 +175,7 @@ Frozen in [`docs/api-contract.md`](api-contract.md): REST under `/api`, live str
 | Baseline A | Exact plate string match (what the problem statement calls the standard solution) |
 | Baseline B | Fuzzy match, Levenshtein <= 1 |
 | Baseline C | Fuzzy + hard time gate |
-| **SUTRA** | Probabilistic 3-channel fusion + global min-cost flow |
+| **UrbanTrace** | Probabilistic 3-channel fusion + global min-cost flow |
 
 Metrics: **IDF1, ID-Precision, ID-Recall, ID-switches, fragmentation count, trajectory completeness, plate accuracy (single read vs consensus), partial-plate search recall@k, clone-detection P/R**, throughput (events/sec).
 
@@ -179,7 +183,7 @@ Ablations: plate-only → +kinematics → +appearance → +global flow → +EM. 
 
 Stress sweeps: OCR error rate 0→40%, camera miss rate 0→30%, camera density, traffic volume. The headline claim is that our gap over Baseline A **widens** as conditions get worse — which is exactly what the real world does.
 
-**Scale target:** 50 cameras, 20,000 vehicles, ~500,000 events over 24 simulated hours. Every throughput and latency number we quote is measured at this scale.
+**Scale target:** 50 cameras, 20,000 vehicles over 24 simulated hours (as measured: ~103,000 reads per day, with BPR congestion `t = t_free·(1 + 0.15·(v/c)⁴)` in the simulator so rush hour is realistic). Every throughput and latency number we quote is measured at this scale.
 
 **Anti-strawman guard (important).** A simulator we wrote ourselves could trivially be tuned to make our method look good and the baseline look stupid. So the corruption model is pinned to *published real-world numbers*, not to whatever flatters us:
 - per-read plate OCR accuracy ≈ **85–95%** (typical field ANPR)
@@ -201,7 +205,7 @@ The headline is the **stratum x channel matrix** (`eval/reports/stratified_auc.j
 
 ## 9. Deployment
 
-`docker-compose up` → api (FastAPI + worker), web (Vite build behind nginx), volume-mounted SQLite. Fully offline: map drawn from the road graph (no tiles), models bundled. No internet needed at the demo table.
+One container, one process: a multi-stage Docker build compiles the web console, and the runtime image carries only the engine + API dependencies (no PyTorch, no evaluation or test extras); `uvicorn api.main:app` serves `/api`, `/ws/live` and the static console. SQLite lives on a named Docker volume, seeded by a one-shot `seed` compose profile. Fully offline: the map is drawn from the road graph (no tiles). Perception (OCR/detector) is an offline tool in its own venv that produces event files; it is not part of the serving image.
 
 ## 10. Known risks
 

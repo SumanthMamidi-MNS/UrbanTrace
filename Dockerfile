@@ -23,41 +23,60 @@ RUN npm run build
 # (`uvicorn api.main:app`, `python -m sim.generate`, ... all run from the repo
 # root) -- this avoids relocating api/main.py into site-packages, which would
 # break its `Path(__file__).resolve().parents[1] / "web" / "dist"` lookup.
+#
+# Runtime-only dependency set (see pyproject.toml's [project.dependencies]
+# comment): scipy, scikit-learn and httpx are eval-/test-only and never
+# imported by `uvicorn api.main:app`, `python -m sim.generate`, or
+# `python -m api.ingest` (including --build-demo) -- they stay out of the
+# image. `uvicorn` + `websockets` (not `uvicorn[standard]`, which pulls in
+# uvloop/httptools/watchfiles/python-dotenv) is enough for the /ws/live
+# websocket endpoint.
 # ---------------------------------------------------------------------------
 FROM python:3.12-slim AS runtime
 WORKDIR /app
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Strip bundled test suites and bytecode caches from site-packages in the
+# SAME layer as the install, so they never end up in an image layer at all.
 RUN pip install --no-cache-dir \
     "pydantic>=2" \
     numpy \
-    scipy \
-    scikit-learn \
     networkx \
     rapidfuzz \
     pyyaml \
     typer \
     rich \
     fastapi \
-    "uvicorn[standard]" \
+    uvicorn \
+    websockets \
     sqlalchemy \
-    httpx
+    && find /usr/local/lib/python3.12/site-packages -type d -name "tests" -prune -exec rm -rf {} + \
+    && find /usr/local/lib/python3.12/site-packages -type d -name "test" -prune -exec rm -rf {} + \
+    && find /usr/local/lib/python3.12/site-packages -type d -name "__pycache__" -prune -exec rm -rf {} +
 
+# Runtime source only: eval/ is NOT copied as a package -- api/routers/eval.py
+# reads eval/reports/*.json as plain files at request time, it never imports
+# the eval/ Python package (confirmed by grep: no api/, engine/, or sim/
+# module used at runtime imports from eval/).
 COPY engine/ ./engine/
 COPY api/ ./api/
 COPY sim/ ./sim/
-COPY eval/ ./eval/
+COPY eval/reports/ ./eval/reports/
 
 COPY --from=web-build /web/dist ./web/dist
 
-RUN useradd --create-home --uid 1000 sutra \
+RUN useradd --create-home --uid 1000 urbantrace \
     && mkdir -p /data \
-    && chown -R sutra:sutra /app /data
+    && chown -R urbantrace:urbantrace /app /data
 
-USER sutra
+USER urbantrace
 
-# SUTRA_DB_PATH must point at a volume, never a bind mount into the (OneDrive)
-# project folder -- see docker-compose.yml's `sutra-db` named volume.
-ENV SUTRA_DB_PATH=/data/sutra.db
+# URBANTRACE_DB_PATH must point at a volume, never a bind mount into the
+# (OneDrive) project folder -- see docker-compose.yml's `urbantrace-db` named
+# volume.
+ENV URBANTRACE_DB_PATH=/data/urbantrace.db
 EXPOSE 8000
 
 CMD ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

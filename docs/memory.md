@@ -1,3 +1,11 @@
-# Build log — SUTRA
+# Build log — UrbanTrace
 
 - **2026-09-15** — Read the PRD and locked the problem framing for SIH26127. Named the project SUTRA, wrote the full architecture (3-channel probabilistic link scoring + min-cost-flow association + consensus plate decoding) and a 5-day phase plan. Moved docs into `docs/` per project rules. No code written yet.
+- **2026-09-15** — Built the contracts, city simulator with ground truth, corruption model pinned to real-world OCR/Re-ID figures, and the three scoring channels with fusion and calibration. Caught and fixed a zero-probability posterior defect and an appearance-embedding scaling bug.
+- **2026-09-16** — Built gating, exact min-cost-flow association with sliding windows, consensus plate repair, partial search, clone detection, analytics, the FastAPI server with live replay, and the six-page web console. Froze the API contract.
+- **2026-09-18** — Found the over-merge root cause (constant prior plus link-cost merge bonus) and fixed both; full-city IDF1 0.926 → 0.990. Added exact dominance pruning (solve 4h → minutes). Moved the database out of OneDrive.
+- **2026-09-20** — Ran the evaluation suite: stress sweep (lead widens 0.09 → 0.43 as OCR degrades), baselines A/B/C, error analysis; fixed a 15 GiB batch-scoring blow-up with chunking. Wrote the demo script, judge Q&A and packaging.
+- **2026-09-21/22** — PRD updated to the official SIH statement: built the OCR module (synthetic renderer, CRNN), organised the team's real dataset, fixed the kinematic null, calibrated the link threshold on training days. Real-plate OCR reached 44% with our CRNN.
+- **2026-09-25** — Fine-tuned fast-plate-ocr on real Indian plates: 81.0% whole-plate / 94.3% character on held-out real plates. Fine-tuned the plate detector (held-out video recall 0.33 → 0.51). Built contract v2: probabilistic watchlist, heatmaps, speeds, flow trend, direction.
+- **2026-09-26** — Added realistic BPR congestion, found and fixed a rush-hour gate recall hole (0.69 → 0.99), recalibrated: congested full-city IDF1 0.972 vs 0.875. Switched the video path to the fine-tuned reader, renamed the project to UrbanTrace, made paths portable, and started GitHub packaging.
+- **2026-09-26 (later)** — GitHub readiness: portfolio README with tagline and real-app screenshots, MIT licence, CI, slim runtime-only Docker image, vendored font, tagline in the console. Found and fixed a test that overwrote the headline report (recovered from logs) and stale watchlist hits after re-ingest; 468 tests pass.

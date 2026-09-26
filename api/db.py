@@ -1,4 +1,4 @@
-"""SQLAlchemy + SQLite storage for the SUTRA API (docs/api-contract.md).
+"""SQLAlchemy + SQLite storage for the UrbanTrace API (docs/api-contract.md).
 
 One row per camera / event / trajectory / alert, plus a small `meta`
 key-value table for dataset-level facts (name, city graph, precomputed

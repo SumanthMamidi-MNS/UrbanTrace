@@ -1,4 +1,4 @@
-import { ApiError, type SutraApi } from '../client'
+import { ApiError, type UrbanTraceApi } from '../client'
 import type {
   AnalyticsSummary,
   CameraStats,
@@ -82,7 +82,7 @@ function linkSpeeds(db: MockDb, now: number): LinkSpeed[] {
   return out
 }
 
-export function createMockApi(db: MockDb, live: LiveSim): SutraApi {
+export function createMockApi(db: MockDb, live: LiveSim): UrbanTraceApi {
   let watchSeq = 1
   const lat = async <T>(fn: () => T, ms = 90): Promise<T> => {
     await delay(ms + Math.random() * 90)

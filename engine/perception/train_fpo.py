@@ -53,10 +53,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+from engine.paths import get_data_dir
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-DEFAULT_RUNS_DIR = Path("C:/sutra-data/ocr/fpo/runs")
-DEFAULT_PRETRAINED_DIR = Path("C:/sutra-data/ocr/fpo/pretrained/cct-s-v2-global-model")
+DEFAULT_RUNS_DIR = get_data_dir() / "ocr/fpo/runs"
+DEFAULT_PRETRAINED_DIR = get_data_dir() / "ocr/fpo/pretrained/cct-s-v2-global-model"
 
 
 def _fast_plate_ocr_cli() -> str:
@@ -247,13 +249,13 @@ def main() -> None:
     parser.add_argument(
         "--train-csv",
         type=Path,
-        default=Path("C:/sutra-data/ocr/real/train/labels.csv"),
+        default=get_data_dir() / "ocr/real/train/labels.csv",
         help="Real TRAIN labels.csv (build_real_set.py format).",
     )
     parser.add_argument(
         "--val-csv",
         type=Path,
-        default=Path("C:/sutra-data/ocr/real/val/labels.csv"),
+        default=get_data_dir() / "ocr/real/val/labels.csv",
         help="Real VAL labels.csv (build_real_set.py format). NEVER the test split.",
     )
     parser.add_argument(

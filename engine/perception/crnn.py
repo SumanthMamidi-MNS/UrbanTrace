@@ -1,7 +1,7 @@
 """Compact CRNN (CNN + BiLSTM + CTC) for Indian plate OCR.
 
 Requires torch -- this module is only ever imported from the SEPARATE OCR
-venv (C:/sutra-data/venv-ocr), never from the main project venv or from
+venv, never from the main project venv or from
 engine/perception/ctc_to_slots.py (which stays numpy-only so it can be
 tested without torch; see that module's docstring).
 

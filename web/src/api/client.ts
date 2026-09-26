@@ -35,7 +35,7 @@ import type {
 } from './types'
 
 /** Every REST endpoint in docs/api-contract.md, one method each. */
-export interface SutraApi {
+export interface UrbanTraceApi {
   health(): Promise<Health>
   city(): Promise<City>
   cameras(): Promise<CameraStats[]>
@@ -112,7 +112,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const enc = encodeURIComponent
 
-const httpApi: SutraApi = {
+const httpApi: UrbanTraceApi = {
   health: () => request('/api/health'),
   city: () => request('/api/city'),
   cameras: () => request('/api/cameras'),
@@ -180,7 +180,7 @@ type MockModule = typeof import('./mock')
 let mockModule: Promise<MockModule> | null = null
 const loadMock = () => (mockModule ??= import('./mock'))
 
-const mockApi: SutraApi = new Proxy({} as SutraApi, {
+const mockApi: UrbanTraceApi = new Proxy({} as UrbanTraceApi, {
   get(_t, prop: string) {
     return async (...args: unknown[]) => {
       const m = await loadMock()
@@ -205,7 +205,7 @@ function mockSubscribe(onMessage: LiveHandler, onStatus?: LiveStatusHandler): ()
   }
 }
 
-export const api: SutraApi = USE_MOCK ? mockApi : httpApi
+export const api: UrbanTraceApi = USE_MOCK ? mockApi : httpApi
 
 export const subscribeLive: (onMessage: LiveHandler, onStatus?: LiveStatusHandler) => () => void = USE_MOCK
   ? mockSubscribe

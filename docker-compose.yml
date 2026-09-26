@@ -1,24 +1,24 @@
 services:
   # The demo API + UI, single container, port 8000.
-  sutra:
+  urbantrace:
     build:
       context: .
       dockerfile: Dockerfile
-    image: sutra:latest
+    image: urbantrace:latest
     ports:
       - "8000:8000"
     environment:
-      SUTRA_DB_PATH: /data/sutra.db
+      URBANTRACE_DB_PATH: /data/urbantrace.db
     volumes:
       # Named volume, never a bind mount into the (OneDrive) project folder --
       # SQLite on OneDrive's synced disk I/O is extremely slow (see README's
       # troubleshooting section).
-      - sutra-db:/data
+      - urbantrace-db:/data
 
   # One-shot: generate a small demo dataset and ingest it, so a fresh machine
   # gets a working demo with one command. Run this BEFORE `docker compose up
-  # sutra` the first time (or restart the `sutra` service afterwards -- it
-  # loads its DB snapshot once at startup, see api/state.py).
+  # urbantrace` the first time (or restart the `urbantrace` service afterwards
+  # -- it loads its DB snapshot once at startup, see api/state.py).
   #
   #   docker compose --profile seed run --rm seed
   #
@@ -29,18 +29,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: sutra:latest
+    image: urbantrace:latest
     profiles: ["seed"]
     environment:
-      SUTRA_DB_PATH: /data/sutra.db
+      URBANTRACE_DB_PATH: /data/urbantrace.db
     volumes:
-      - sutra-db:/data
+      - urbantrace-db:/data
     command:
       - sh
       - -c
       - >-
         python -m sim.generate --cameras 25 --vehicles 4000 --hours 6 --seed 42 --out /tmp/seed &&
-        python -m api.ingest --data /tmp/seed --db $$SUTRA_DB_PATH --build-demo
+        python -m api.ingest --data /tmp/seed --db $$URBANTRACE_DB_PATH --build-demo
 
 volumes:
-  sutra-db:
+  urbantrace-db:

@@ -13,7 +13,7 @@ from api.state import AppState
 
 
 def get_session(request: Request) -> Generator[Session, None, None]:
-    session_factory = request.app.state.sutra.session_factory
+    session_factory = request.app.state.urbantrace.session_factory
     session = session_factory()
     try:
         yield session
@@ -22,8 +22,8 @@ def get_session(request: Request) -> Generator[Session, None, None]:
 
 
 def get_state(request: Request) -> AppState:
-    return request.app.state.sutra
+    return request.app.state.urbantrace
 
 
 def get_replay_engine(request: Request) -> ReplayEngine:
-    return request.app.state.sutra_replay
+    return request.app.state.urbantrace_replay

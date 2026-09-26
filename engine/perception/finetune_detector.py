@@ -7,7 +7,8 @@ detector itself needs to see more Indian scene photos, not just be run
 differently.
 
 Training data (three sources, combined into one YOLO-format dataset under
-C:/sutra-data/ocr/detector_finetune/):
+`<data_dir>/ocr/detector_finetune/`, where `<data_dir>` is
+`URBANTRACE_DATA_DIR`, see `engine.paths`):
   - plate_boxes_2k's 181 scene images (`0000xxxx.jpg`) -- YOLO labels
     already exist in the source data, used as-is. (The other 1,902
     already-cropped `License (N).png` images are never used here either --
@@ -43,6 +44,7 @@ import random
 import shutil
 from pathlib import Path
 
+from engine.paths import get_data_dir
 from engine.perception.build_real_set import (
     DEFAULT_RAW_ROOT as XML_ROOT_DEFAULT,
 )
@@ -52,11 +54,11 @@ from engine.perception.build_real_set import (
     assign_split,
 )
 
-DEFAULT_PLATE_BOXES_2K = Path("C:/sutra-data/ocr/raw/plate_boxes_2k")
-DEFAULT_VIDEO_FRAMES_BOXES = Path("C:/sutra-data/ocr/raw/video_frames_boxes")
-DEFAULT_WEIGHTS = Path("C:/sutra-data/ocr/weights/best.pt")
-DEFAULT_DATASET_DIR = Path("C:/sutra-data/ocr/detector_finetune")
-DEFAULT_RUN_DIR = Path("C:/sutra-data/ocr/runs/detector_finetune")
+DEFAULT_PLATE_BOXES_2K = get_data_dir() / "ocr/raw/plate_boxes_2k"
+DEFAULT_VIDEO_FRAMES_BOXES = get_data_dir() / "ocr/raw/video_frames_boxes"
+DEFAULT_WEIGHTS = get_data_dir() / "ocr/weights/best.pt"
+DEFAULT_DATASET_DIR = get_data_dir() / "ocr/detector_finetune"
+DEFAULT_RUN_DIR = get_data_dir() / "ocr/runs/detector_finetune"
 
 TRAIN_VIDEOS = ["vid-1", "vid-2"]
 HOLDOUT_VIDEO = "vid-3"

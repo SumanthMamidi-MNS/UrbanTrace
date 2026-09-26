@@ -43,7 +43,7 @@ def main() -> None:
         "description": (
             "Appearance-only rank-1 retrieval accuracy vs gallery size (number of "
             "distinct vehicle identities). Demonstrates that appearance alone decays "
-            "at city scale -- the reason SUTRA fuses plate + appearance + kinematics "
+            "at city scale -- the reason UrbanTrace fuses plate + appearance + kinematics "
             "rather than relying on any single channel."
         ),
         "n_cameras": N_CAMERAS,

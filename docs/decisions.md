@@ -1,4 +1,4 @@
-# Decision log — SUTRA
+# Decision log — UrbanTrace
 
 One line per non-obvious technical choice: what, and why.
 
@@ -209,3 +209,13 @@ Lead's verdict on the Day 1 open question above: the 15% city-scale rank-1 **was
 - **Gate congestion floor verified on congested run2**: true-predecessor recall now ≥ 0.993 at every hour (08h 0.688 → 0.993, 17h 0.695 → 0.994, 18h 0.768 → 0.997; nights unchanged at ~0.998). Cost: mean gated candidates per read 4.5× higher (1,026; 1,696 at 08h) — the floor applies at every hour, not only when congestion occurs. Accepted for correctness; a learned per-time-of-day tail factor would cut the night-time overhead and is noted as a later optimisation (`eval/reports/gate_recall_by_hour*.json`).
 - **Calibration sweep narrowed to β ∈ {0, 1, 2, 3}** (new `--betas` option): with 4.5× more candidates each full-day solve is slower, and both earlier sweeps peaked inside that range; the full default grid remains available.
 - **β = 5 for the congested regime, chosen on the congested training day (seed 20260926)**: IDF1 0.9463 (β=0) → 0.9632 (3) → 0.9665 (4) → **0.9693 (5)** → 0.9691 (6). IDF1 was the pre-declared selection metric and flattens at 5; ID switches keep falling beyond it (2,754 → 2,381) but are not the selection criterion. The first sweep ended at the grid edge (β=3) and was extended rather than accepting a boundary optimum. The higher β than the uncongested regime (2) is expected: with travel time less informative at rush hour, genuine links carry smaller positive log-odds and need a lower acceptance threshold.
+
+## Rename (2026-09-26)
+
+- **Project renamed SUTRA → UrbanTrace** (owner's choice, for a portfolio-grade name): one word for a searchable, repo-friendly brand; no "AI" in the name — it goes in the tagline, where it describes rather than decorates. Earlier entries keep the old name as history.
+- **Tagline: "City-scale vehicle tracking that reasons in probabilities, not string matches."** It states the one idea that separates the project from exact-match ANPR, in reviewer language; the "AI" wording lives in the one-line description instead of the name.
+- **Candidate budget for plate blocking raised 500 → 4000** (`engine/association/blocking.py`): after the congestion floor widened the gate, blocking engaged on 74% of reads and silently re-introduced plate brittleness; at 4000 it is back to a pure overflow valve (0% engagement on run2).
+- **README leads with a portfolio front page** (tagline, four PRD components, results at a glance with a link to each evidence file, mermaid architecture), followed by the full quickstart, results and limitations — reviewers get the claim and its proof within one screen.
+- **Headline evidence was being overwritten by the test suite, now fixed.** `eval/run_pipeline.py` wrote to a hard-coded `eval/reports/trajectory_metrics.json`, and the congestion guard test in `tests/test_determinism.py` runs it on a toy dataset, so every test run replaced the full-city report with a 187-event one (commit `ec38bd3` contains the clobbered file). Fix: a `--report` option (same default) that the test points at a temp file. The run2 and run1 reports were recovered byte-for-value from the pipeline logs (`data/logs/run2_full.log`, `full_run_beta2.log`) and match every published figure.
+- **Re-ingest clears watchlist hits but keeps watchlist entries**: hits reference event/trajectory ids that re-ingest replaces, so stale hits appeared on the Watchlist page after a reseed.
+- **Runtime dependencies split from `[eval]`/`[dev]` extras** so the Docker image carries only what `uvicorn`, `sim.generate` and `api.ingest` import (proved in a clean venv: 145 MB site-packages); the plate font (SIL OFL) is vendored so tests pass on a fresh clone.

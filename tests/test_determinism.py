@@ -102,6 +102,7 @@ def test_run_pipeline_train_split_matches_eval_dataset_congestion(tmp_path: Path
         train_seed_offset=9001,
         max_hours=None,
         link_bias=0.0,
+        report=tmp_path / "trajectory_metrics.json",
     )
 
     assert captured["congestion"] is True

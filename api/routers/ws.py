@@ -10,7 +10,7 @@ router = APIRouter(tags=["ws"])
 
 @router.websocket("/ws/live")
 async def ws_live(websocket: WebSocket) -> None:
-    engine = websocket.app.state.sutra_replay
+    engine = websocket.app.state.urbantrace_replay
     await engine.manager.connect(websocket)
     try:
         while True:

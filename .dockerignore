@@ -13,7 +13,7 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 
-# datasets / local DB (SUTRA_DB_PATH lives outside the repo; data/ is gitignored and can be
+# datasets / local DB (URBANTRACE_DB_PATH lives outside the repo; data/ is gitignored and can be
 # tens/hundreds of MB of generated events+embeddings — never bake it into the image)
 data/
 models/
@@ -29,3 +29,7 @@ web/dist/
 docs/
 tests/
 # eval/reports/*.json (~100KB) is intentionally NOT excluded -- /api/eval serves it verbatim.
+
+# Local Vite env overrides (e.g. VITE_API_BASE) must never leak into the image build
+**/.env
+**/.env.*

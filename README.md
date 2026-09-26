@@ -1,46 +1,139 @@
-# SUTRA
+<div align="center">
 
-**SIH26127 — City-Wide AI Engine for Multi-Camera ANPR Trajectory Tracking and Urban Traffic Analytics**
-(Bharat Electronics Ltd.)
+# UrbanTrace
 
-## The problem, in one line
+### City-scale vehicle tracking that reasons in probabilities, not string matches.
 
-Every ANPR camera in a city fires off isolated reads — `(camera, timestamp, plate guess, confidence,
-vehicle photo)` — and nothing links them into one vehicle's journey. The obvious fix, matching plate
-strings exactly across cameras, breaks the moment a single OCR read is wrong (angle, blur, occlusion,
-night glare) — and in the real world, a read is wrong often.
+An AI engine for city-wide ANPR networks: it fuses noisy plate reads, vehicle appearance and travel time
+into vehicle journeys, traffic analytics and real-time alerts.
 
-**SUTRA's idea:** stop asking "are the two plate strings equal?" and start asking "what is the
-probability these two reads are the same vehicle?" Three independent signals — the plate read's
-per-character confidence (not just its best guess), a visual appearance embedding, and how plausible the
-travel time between two cameras is — are fused into one score per candidate pair, and a global
-optimizer (min-cost flow) picks the trajectories that best explain the whole city at once. One bad OCR
-read no longer breaks the chain; enough correct reads on a trajectory even *repair* the wrong ones.
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-REST%20%2B%20WebSocket-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-TypeScript-61DAFB?logo=react&logoColor=black)
+![MapLibre](https://img.shields.io/badge/MapLibre-GIS-396CB2)
+![Tests](https://img.shields.io/badge/tests-460%2B%20passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-See [`docs/architecture.md`](docs/architecture.md) for the full design and the math, and
-[`docs/PRD.md`](docs/PRD.md) for the original problem statement.
+**IDF1 0.972 vs 0.875** for exact plate matching on a congested 20,000-vehicle city day ·
+**9× fewer identity errors** · **94.3% per-character OCR** on held-out real Indian plates ·
+runs offline on a laptop, no cloud APIs
 
-## Architecture, briefly
+<img src="docs/images/live-map.png" alt="UrbanTrace live map: camera network with a traffic-density heatmap, an alerted trajectory, the alert feed and the live read ticker" width="100%">
 
+<sub>Built for Smart India Hackathon problem SIH26127 (Bharat Electronics Ltd.) —
+<a href="docs/PRD.md">problem statement</a></sub>
+
+</div>
+
+---
+
+## Why this exists
+
+Every ANPR camera in a city emits isolated reads — `(camera, time, plate guess, confidence, vehicle crop)`.
+Nothing joins them into one vehicle's journey. The standard fix is to match plate strings exactly across
+cameras, and it breaks the moment a single character is misread — angle, blur, night glare, a truck in the
+way. In real deployments that happens constantly.
+
+**UrbanTrace changes the question.** Instead of *"are these two strings equal?"* it asks *"how likely is it
+that these two reads are the same vehicle?"* — and answers with three independent pieces of evidence:
+
+| Evidence | What it measures |
+|---|---|
+| **Plate** | Character-by-character agreement between two OCR *probability distributions*, not their best guesses. An unreadable character counts as zero evidence, never as a mismatch. |
+| **Appearance** | How alike the two vehicle crops look, as a calibrated same-vs-different likelihood ratio. |
+| **Travel time** | Whether the gap between the two cameras is plausible on the road network at that time of day — learned per camera pair, congestion-aware, with physically impossible trips rejected outright. |
+
+Each is a log-likelihood ratio, so they simply add. A **min-cost-flow** solver then picks the set of
+journeys that best explains every read in the city at once, with one rule enforced by construction: each
+read belongs to exactly one vehicle. Once journeys exist, the reads along them are fused, so linking
+**repairs** the OCR instead of depending on it.
+
+## What it does
+
+The four components the problem statement asks for, all working end to end:
+
+| | Component | What UrbanTrace delivers |
+|---|---|---|
+| 1 | **Deep-learning plate OCR** | YOLO plate detector + fast-plate-ocr, both fine-tuned on real Indian plates; per-character probabilities with calibrated confidence (ECE 0.041). |
+| 2 | **Trajectory reconstruction** | Multi-camera journeys on a GIS map with timestamps and direction of travel, a *WHY panel* that breaks every link into its evidence, consensus plate repair, and partial-plate search (`RJ78IV23??`). |
+| 3 | **Traffic analytics dashboard** | Density and speed heatmaps (live), average speeds per corridor, origin–destination matrix, route volumes, flow trends and a congestion-bottleneck ranking. |
+| 4 | **Real-time alerts** | Probabilistic watchlist (catches a blacklisted vehicle even when one camera misreads it), cloned-plate detection, impossible-travel and route-anomaly alerts, streamed over WebSocket. |
+
+## Results at a glance
+
+| | Result | Evidence |
+|---|---|---|
+| Tracking accuracy (congested city day, 103,475 reads) | **IDF1 0.972** vs 0.875 for exact matching | [`trajectory_metrics.json`](eval/reports/trajectory_metrics.json) |
+| Identity errors | **2,143** vs 19,214 | same |
+| Robustness when half of all plate reads are wrong | **0.980** vs 0.553 | [`stress_sweep.json`](eval/reports/stress_sweep.json) |
+| OCR on 276 held-out real Indian plates | **94.3%** per character · **81.0%** whole plate | [`ocr_real_fpo_finetuned.json`](eval/reports/ocr_real_fpo_finetuned.json) |
+| Plate repair by fusing 4+ camera reads | 87.8% → **99.95%** | [`consensus_accuracy.json`](eval/reports/consensus_accuracy.json) |
+| Cloned plates (two cars, one plate string) | fused AUC **0.998** vs 0.477 plate-only | [`stratified_auc.json`](eval/reports/stratified_auc.json) |
+
+Nothing is tuned on what it is scored on, and the weak spots are reported alongside the strong ones — see
+[Results](#results) and [Honest limitations](#honest-limitations) below.
+
+## A look inside
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/trajectory.png" alt="Trajectory detail"><br><sub><b>A journey, explained.</b> Eight cameras saw this car and three misread its plate; fusing the reads recovers <code>RJ78IV2345</code> at 99.95%. Every link shows its plate, appearance and travel-time evidence.</sub></td>
+<td width="50%"><img src="docs/images/alerts.png" alt="Cloned-plate alert"><br><sub><b>A cloned plate, caught.</b> The same plate 591 m apart in 11 s would need 185 km/h, and the two vehicles look different: two cars, one plate.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/images/analytics.png" alt="Analytics dashboard"><br><sub><b>City analytics</b> from the same journeys: volumes, origin–destination flows, speed trends and congestion bottlenecks.</sub></td>
+<td width="50%"><img src="docs/images/results.png" alt="Results page"><br><sub><b>Evidence in the app.</b> The Results page renders every report in <code>eval/reports/</code>, starting with OCR on real Indian plates.</sub></td>
+</tr>
+</table>
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph L1["L1 · Ingest"]
+        SIM["City simulator<br/>(ground truth)"]
+        VID["Camera video"]
+    end
+    subgraph L2["L2 · Perception"]
+        DET["YOLO plate detector"] --> OCR["fast-plate-ocr<br/>per-char posteriors"]
+    end
+    subgraph L3["L3 · Linking engine"]
+        GATE["Spatio-temporal gate<br/>(congestion-aware)"] --> FUSE["3-channel<br/>likelihood fusion"] --> MCF["Min-cost flow<br/>(sliding windows)"] --> CONS["Consensus decode<br/>+ clone detection"]
+    end
+    subgraph L4["L4 · Analytics & alerts"]
+        AN["Speeds · OD · heatmaps<br/>bottlenecks · flow trends"]
+        AL["Watchlist · clones<br/>anomalies"]
+    end
+    subgraph L56["L5–L6 · Serve"]
+        API["FastAPI<br/>REST + WebSocket"] --> UI["React + MapLibre<br/>operator console"]
+    end
+    VID --> DET
+    OCR -- DetectionEvent --> GATE
+    SIM -- DetectionEvent --> GATE
+    CONS --> AN & AL
+    AN & AL --> API
 ```
-L6  Web UI (React + MapLibre)         live map, trajectory replay, search, analytics, alerts, WHY-panel
-L5  API (FastAPI REST + WebSocket)    served by a single uvicorn process, also serves the built UI
-L4  Analytics                         OD matrix, corridor travel times, congestion, volumes, anomalies
-L3  Linking engine                    spatio-temporal gating -> 3-channel likelihood fusion -> min-cost
-                                       flow -> consensus plate decoding -> clone detection
-L2  Perception (optional/offline)     vehicle detect -> track -> plate OCR (per-char posterior) -> Re-ID
-L1  Ingest                            SimSource | VideoSource | CsvReplaySource -> canonical DetectionEvent
-```
 
-L1 and L3 are separated by a hard contract (`DetectionEvent`, see `engine/contracts/`): the linking
-engine doesn't know or care whether an event came from the simulator or a real camera. The simulator
-(`sim/`) is what makes this project defensible without a data center full of cameras: it gives ground
-truth, so the evaluation numbers below are measured, not asserted.
+Perception and linking are separated by one hard contract, `DetectionEvent` ([`engine/contracts/`](engine/contracts/)):
+the linking engine neither knows nor cares whether a read came from a real camera or the simulator. The
+simulator is what makes the tracking claims measurable — no public dataset provides city-wide
+multi-camera plate reads *with* the true vehicle journeys. Its noise is pinned to published real-world
+figures, with tests that fail the build if it drifts.
 
-Everything the API and UI need at runtime lives in one process: `uvicorn api.main:app` serves both the
-REST/WebSocket API under `/api` and `/ws/live`, and the built web app (`web/dist`) at `/`. Storage is
-SQLAlchemy over SQLite, pointed at by the `SUTRA_DB_PATH` environment variable (see **Troubleshooting**
-below — this matters more than it sounds like it should).
+The API and UI run as a single process: `uvicorn api.main:app` serves REST under `/api`, the live replay
+under `/ws/live` and the built console at `/`, over SQLite. Full design and maths:
+[`docs/architecture.md`](docs/architecture.md). Every non-obvious choice and why:
+[`docs/decisions.md`](docs/decisions.md).
+
+## Tech stack
+
+| Layer | Tools |
+|---|---|
+| Linking engine | Python 3.12, NumPy, SciPy; own successive-shortest-path min-cost-flow solver (checked against NetworkX) |
+| Perception | Ultralytics YOLO (plate detection), fast-plate-ocr (recognition), PyTorch (own CRNN baseline) |
+| API | FastAPI, WebSocket replay, SQLAlchemy + SQLite |
+| Console | React, TypeScript, Vite, Tailwind, MapLibre GL, Recharts, TanStack Query |
+| Quality | pytest (460+ tests), ruff, oxlint, GitHub Actions |
 
 ## Quickstart — Windows, no Docker
 
@@ -48,20 +141,20 @@ Requires Python 3.12+ and Node 22+.
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\pip install -e ".[dev]"
+.venv\Scripts\pip install -e ".[dev]"     # or just -e . to only serve/simulate/ingest (no scipy/sklearn/pytest)
 
 # Keep the SQLite DB OFF the OneDrive-synced project folder -- see Troubleshooting.
-$env:SUTRA_DB_PATH = "$env:LOCALAPPDATA\sutra\sutra.db"
-New-Item -ItemType Directory -Force -Path (Split-Path $env:SUTRA_DB_PATH) | Out-Null
+$env:URBANTRACE_DB_PATH = "$env:LOCALAPPDATA\urbantrace\urbantrace.db"
+New-Item -ItemType Directory -Force -Path (Split-Path $env:URBANTRACE_DB_PATH) | Out-Null
 
 # 1. Generate a small demo dataset (25 cameras, 4,000 vehicles, 6 simulated hours -- a few minutes).
 python -m sim.generate --cameras 25 --vehicles 4000 --hours 6 --seed 42 --out data/run1
 
-# 2. Run the real linking pipeline (gate -> fuse -> min-cost flow) and get the SUTRA-vs-baseline scoreboard.
+# 2. Run the real linking pipeline (gate -> fuse -> min-cost flow) and get the UrbanTrace-vs-baseline scoreboard.
 python -m eval.run_pipeline --data data/run1 --out data/run1/pipeline
 
 # 3. Load events + trajectories into SQLite.
-python -m api.ingest --data data/run1 --trajectories data/run1/pipeline/trajectories.jsonl --db $env:SUTRA_DB_PATH
+python -m api.ingest --data data/run1 --trajectories data/run1/pipeline/trajectories.jsonl --db $env:URBANTRACE_DB_PATH
 
 # 4. Build the UI against the real API, then serve everything from one process.
 cd web
@@ -105,13 +198,13 @@ Requires Docker Desktop (with Compose v2) running.
 docker compose --profile seed run --rm seed
 
 # Build and start the app (API + UI in one container, port 8000).
-docker compose up --build sutra
+docker compose up --build urbantrace
 ```
 
 or with the task runner: `make docker-seed && make docker-up` / `./make.ps1 docker-seed` then
 `./make.ps1 docker-up`.
 
-Open http://localhost:8000. The SQLite DB lives on the named Docker volume `sutra-db`, never on a bind
+Open http://localhost:8000. The SQLite DB lives on the named Docker volume `urbantrace-db`, never on a bind
 mount into this folder — see **Troubleshooting**.
 
 To reseed from scratch: `docker compose down -v` (removes the volume) then repeat the two commands
@@ -124,7 +217,7 @@ above.
 
 | File | What it shows |
 |---|---|
-| `trajectory_metrics.json` | The headline scoreboard: SUTRA vs. Baseline A (exact plate-string match, same spatio-temporal gate) — IDF1, ID-precision/recall, ID-switches, fragmentation, trajectory completeness (from `eval/run_pipeline.py`) |
+| `trajectory_metrics.json` | The headline scoreboard: UrbanTrace vs. Baseline A (exact plate-string match, same spatio-temporal gate) — IDF1, ID-precision/recall, ID-switches, fragmentation, trajectory completeness (from `eval/run_pipeline.py`) |
 | `trajectory_metrics_prefix.json` | The same, on a time-prefix of the dataset (`--max-hours`) — a quick timing/sanity check before committing to a full run |
 | `stratified_auc.json` | The stratum x channel AUC matrix (architecture.md §8): plate-only vs. fused, across the *routine*, *clone*, *degraded*, and *plate-similar* strata — the load-bearing evidence that fusion, not just the plate channel, is doing the work |
 | `clone_overlap_auc.json` | Clone-detection performance split by route-overlap difficulty |
@@ -166,7 +259,7 @@ Small, distant plates in general traffic footage are the system's main real-worl
 
 A simulated city day **with realistic rush-hour congestion**: 50 cameras, 20,000 vehicles, 24 hours, **103,475 camera reads**.
 
-| | **SUTRA** | Baseline A (exact plate match) |
+| | **UrbanTrace** | Baseline A (exact plate match) |
 |---|---|---|
 | **IDF1** | **0.9716** | 0.8745 |
 | Identity switches | **2,143** | 19,214 |
@@ -189,7 +282,7 @@ On the congested day: **197 cloned-plate alerts**, 1 impossible-travel, 2 loopin
 
 ### 6. Robustness — the gap grows as plates get harder to read (`stress_sweep.json`)
 
-| Per-read plate accuracy | SUTRA IDF1 | Exact match IDF1 | Gap |
+| Per-read plate accuracy | UrbanTrace IDF1 | Exact match IDF1 | Gap |
 |---|---|---|---|
 | 88.8% | 0.979 | 0.885 | 0.094 |
 | 70.4% | 0.979 | 0.717 | 0.262 |
@@ -197,7 +290,7 @@ On the congested day: **197 cloned-plate alerts**, 1 impossible-travel, 2 loopin
 | 55.2% | 0.986 | 0.589 | 0.398 |
 | **50.0%** | **0.980** | **0.553** | **0.427** |
 
-When cameras **miss** vehicles instead (0% → 30%), SUTRA stays at 0.97–0.99 with a steady lead of ~0.09–0.11, but the gap does **not** widen — the widening is specific to plate-reading errors. *(Run on smaller uncongested cities.)*
+When cameras **miss** vehicles instead (0% → 30%), UrbanTrace stays at 0.97–0.99 with a steady lead of ~0.09–0.11, but the gap does **not** widen — the widening is specific to plate-reading errors. *(Run on smaller uncongested cities.)*
 
 ### 7. Baselines, ablation and fusion by case
 
@@ -267,11 +360,26 @@ also runs the web linter).
 **Everything (generate/ingest/serve) is painfully slow, especially SQLite writes.**
 This project folder lives inside OneDrive. OneDrive's background sync makes disk I/O on files inside it
 much slower than a local disk — SQLite, which does frequent small writes, feels this badly. Fix: point
-`SUTRA_DB_PATH` at a location *outside* OneDrive, e.g. `%LOCALAPPDATA%\sutra\sutra.db` on Windows
+`URBANTRACE_DB_PATH` at a location *outside* OneDrive, e.g. `%LOCALAPPDATA%\urbantrace\urbantrace.db` on Windows
 (`make.ps1` does this for you automatically; the plain `Makefile`/manual commands need you to set the
 env var yourself, as shown in the quickstart above). In Docker this is a non-issue: the DB lives on the
-named volume `sutra-db`, which Docker manages outside any bind-mounted, OneDrive-synced folder — never
+named volume `urbantrace-db`, which Docker manages outside any bind-mounted, OneDrive-synced folder — never
 change `docker-compose.yml` to bind-mount `/data` into this repo.
+
+**Where OCR training/raw data lives (`URBANTRACE_DATA_DIR`).**
+Every default path in `engine/`, `eval/`, and `sim/` that points at raw datasets, detector/OCR weights, or
+training runs (see `engine/paths.py`) is resolved from one setting: `URBANTRACE_DATA_DIR`, which defaults to
+a repo-relative `./data` (gitignored). If your OCR/detector data lives somewhere else — e.g. an existing
+`ocr/` tree outside the repo, alongside a separate OCR venv — set it before running any `engine.perception.*`
+or `eval.*` script:
+
+```powershell
+$env:URBANTRACE_DATA_DIR = "C:\path\to\your\data"
+```
+
+This is independent of `URBANTRACE_DB_PATH` above (that's just the API's SQLite file); most people only
+ever need to set `URBANTRACE_DATA_DIR` if they're re-running the OCR/detector training scripts against a
+pre-existing dataset outside the repo.
 
 **`docker compose up` fails to connect / hangs.**
 Docker Desktop needs to be running (and fully started, not just launching) before `docker compose`
@@ -298,3 +406,14 @@ much smaller.
 See [`docs/architecture.md`](docs/architecture.md) §6 for the full folder structure, and
 [`docs/api-contract.md`](docs/api-contract.md) for the frozen REST/WebSocket contract both `api/` and
 `web/` build against.
+
+## Acknowledgements
+
+- [fast-plate-ocr](https://github.com/ankandrew/fast-plate-ocr) (MIT) — the pretrained plate recogniser we fine-tuned.
+- [Koushim/yolov8-license-plate-detection](https://huggingface.co/Koushim/yolov8-license-plate-detection) (MIT weights) on [Ultralytics](https://github.com/ultralytics/ultralytics) (AGPL-3.0) — the plate detector we fine-tuned.
+- Public Kaggle Indian licence-plate datasets, used for OCR and detector fine-tuning and held-out evaluation. Datasets and model weights are not redistributed in this repository.
+- Smart India Hackathon and Bharat Electronics Ltd. for problem statement SIH26127.
+
+## License
+
+[MIT](LICENSE) © 2026 Sumanth

@@ -4,11 +4,12 @@
 
 Runs under the SEPARATE OCR venv (ultralytics + torch). The default weights
 are now the FINE-TUNED detector,
-C:/sutra-data/ocr/runs/detector_finetune/weights/best.pt (trained on top of
-the pretrained baseline below -- see `engine/perception/finetune_detector.py`
-and `eval/reports/detector_eval.json` / `detector_holdout_video.json` for
-its measured accuracy). The original pretrained baseline,
-C:/sutra-data/ocr/weights/best.pt (downloaded once via `hf download`, not
+`<data_dir>/ocr/runs/detector_finetune/weights/best.pt` (`<data_dir>` is
+`URBANTRACE_DATA_DIR`, see `engine.paths`; trained on top of the pretrained
+baseline below -- see `engine/perception/finetune_detector.py` and
+`eval/reports/detector_eval.json` / `detector_holdout_video.json` for its
+measured accuracy). The original pretrained baseline,
+`<data_dir>/ocr/weights/best.pt` (downloaded once via `hf download`, not
 committed to the repo -- see docs/decisions.md, "OCR module"), remains
 available via `PRETRAINED_WEIGHTS_PATH` for callers that explicitly want it
 (e.g. an eval script comparing before/after fine-tuning).
@@ -54,13 +55,15 @@ from pathlib import Path
 import numpy as np
 from ultralytics import YOLO
 
+from engine.paths import get_data_dir
+
 # Pretrained baseline (Koushim/yolov8-license-plate-detection, see module
 # docstring) -- kept available for callers that explicitly want the
 # pre-fine-tuning weights.
-PRETRAINED_WEIGHTS_PATH = Path("C:/sutra-data/ocr/weights/best.pt")
+PRETRAINED_WEIGHTS_PATH = get_data_dir() / "ocr/weights/best.pt"
 
 # Fine-tuned detector (module docstring) -- now the default.
-DEFAULT_WEIGHTS_PATH = Path("C:/sutra-data/ocr/runs/detector_finetune/weights/best.pt")
+DEFAULT_WEIGHTS_PATH = get_data_dir() / "ocr/runs/detector_finetune/weights/best.pt"
 
 # Tiling defaults -- see module docstring.
 DEFAULT_TILE_SIZE = 640

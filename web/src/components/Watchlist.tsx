@@ -195,7 +195,7 @@ export function WatchlistEvidence({ alert, traj, cameraName }: { alert: Alert; t
           )}
         </p>
         {consensus && readWrong && (
-          <p className="mt-1 text-xs text-fg-muted">An exact-match watchlist would have missed this read. SUTRA caught it because the plate evidence from every camera on the trajectory is fused before matching.</p>
+          <p className="mt-1 text-xs text-fg-muted">An exact-match watchlist would have missed this read. UrbanTrace caught it because the plate evidence from every camera on the trajectory is fused before matching.</p>
         )}
       </div>
 

@@ -2,7 +2,7 @@
 <=1" / "Baseline C: Fuzzy + hard time gate") on the SAME in-memory dataset
 `eval/ablation.py` evaluates on -- identical seeds/config, deterministically
 reproduced here (not regenerated with different parameters), so all three
-baselines and SUTRA's ablation rows are directly comparable.
+baselines and UrbanTrace's ablation rows are directly comparable.
 
 Baseline B: within the SAME spatio-temporal gate the real pipeline uses,
 link event j to its closest-in-time gated predecessor i whose plate_argmax

@@ -1,4 +1,4 @@
-# Judge Q&A — SUTRA (SIH26127)
+# Judge Q&A — UrbanTrace (SIH26127)
 
 Hard questions, honest answers. Every number is in `eval/reports/`. **If you don't know, say so** — a confident wrong answer is worse than "we haven't measured that yet."
 

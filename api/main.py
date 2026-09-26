@@ -2,8 +2,9 @@
 
     uvicorn api.main:app --port 8000
 
-Reads the SQLite database at `$SUTRA_DB_PATH` (default `data/sutra.db`,
-populated by `python -m api.ingest`). If `web/dist` exists, the built UI is
+Reads the SQLite database at `$URBANTRACE_DB_PATH` (falls back to the legacy
+`$SUTRA_DB_PATH`, default `<data_dir>/urbantrace.db` -- see `engine.paths`),
+populated by `python -m api.ingest`. If `web/dist` exists, the built UI is
 served at `/` (with an index.html fallback for client-side routes) so one
 `uvicorn` process gives the whole demo.
 """
@@ -11,7 +12,6 @@ served at `/` (with an index.html fallback for client-side routes) so one
 from __future__ import annotations
 
 import asyncio
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -29,19 +29,19 @@ from api.routers import replay as replay_router
 from api.routers import watchlist as watchlist_router
 from api.routers import ws as ws_router
 from api.state import load_app_state
+from engine.paths import get_db_path
 
-DEFAULT_DB_PATH = "data/sutra.db"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DIST_DIR = REPO_ROOT / "web" / "dist"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db_path = os.environ.get("SUTRA_DB_PATH", DEFAULT_DB_PATH)
+    db_path = get_db_path()
     state = load_app_state(db_path)
-    app.state.sutra = state
+    app.state.urbantrace = state
     engine = build_replay_engine(state.session_factory)
-    app.state.sutra_replay = engine
+    app.state.urbantrace_replay = engine
     task = asyncio.ensure_future(engine.run_forever())
     try:
         yield
@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
         task.cancel()
 
 
-app = FastAPI(title="SUTRA API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="UrbanTrace API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

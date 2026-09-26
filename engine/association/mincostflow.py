@@ -26,7 +26,7 @@ that let the solver prefer wrongly linking two different vehicles over
 correctly paying for a track death and a new track birth, whenever
 `-s(i,j) < exit_cost(i) + entry_cost(j)`, i.e. whenever `s(i,j)` was only
 MILDLY negative. `eval/reports/error_analysis.json` found 57.6% of
-full-city SUTRA's wrong links had `total_log_odds < 0` -- accepted only
+full-city UrbanTrace's wrong links had `total_log_odds < 0` -- accepted only
 because of this missing additive term.
 
 Charging the link arc the SAME two costs it replaces (`-s(i,j) +

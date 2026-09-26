@@ -2,7 +2,7 @@
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
 /*
- * SUTRA console palette. One accent (signal cyan), one caution (amber: misreads, evidence
+ * UrbanTrace console palette. One accent (signal cyan), one caution (amber: misreads, evidence
  * against a link, medium severity), and red reserved strictly for alerts.
  * Everything else is neutral slate.
  */

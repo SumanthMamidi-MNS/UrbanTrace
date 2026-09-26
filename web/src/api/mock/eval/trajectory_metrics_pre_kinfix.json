@@ -1,5 +1,5 @@
 {
-  "description": "FULL-dataset trajectory-level result (SUTRA vs Baseline A, exact plate match). architecture.md section 8's headline scoreboard.",
+  "description": "FULL-dataset trajectory-level result (UrbanTrace vs Baseline A, exact plate match). architecture.md section 8's headline scoreboard.",
   "data_dir": "data\\run1",
   "max_hours": null,
   "config": {

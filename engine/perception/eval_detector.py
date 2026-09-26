@@ -1,5 +1,5 @@
 """Evaluate the approved YOLO plate detector (engine.perception.detect,
-C:/sutra-data/ocr/weights/best.pt) on three real, boxed datasets: precision,
+`<data_dir>/ocr/weights/best.pt`) on three real, boxed datasets: precision,
 recall (at a fixed operating confidence) and mAP@0.5 (threshold-independent,
 standard PASCAL VOC-style average precision), reported SEPARATELY per set
 -- the PRD asks for plates "in multi-lane traffic streams", so detector
@@ -9,7 +9,8 @@ Runs under the SEPARATE OCR venv (torch/ultralytics, via
 engine.perception.detect.PlateDetector). Inference only -- no training, no
 gradient, a few thousand single-image forward passes.
 
-Datasets (see C:/sutra-data/ocr/raw/README.md):
+Datasets (see `<data_dir>/ocr/raw/README.md`, where `<data_dir>` is
+`URBANTRACE_DATA_DIR`, see `engine.paths`):
   - `plate_boxes_2k/`: ~2,083 real images, YOLO-format `.txt` labels
     (`images/`, `labels/`; an image with no label file has zero plates).
     IMPORTANT: 1,902 of these (`License (N).png`) are ALREADY-CROPPED plate
@@ -68,6 +69,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from engine.paths import get_data_dir
 from engine.perception.build_real_set import SOURCES as XML_SOURCES
 from engine.perception.build_real_set import find_image_file
 from engine.perception.detect import DEFAULT_WEIGHTS_PATH, PlateDetector
@@ -75,9 +77,9 @@ from engine.perception.detect import DEFAULT_WEIGHTS_PATH, PlateDetector
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REPORT_PATH = REPO_ROOT / "eval" / "reports" / "detector_eval.json"
 
-DEFAULT_PLATE_BOXES_2K = Path("C:/sutra-data/ocr/raw/plate_boxes_2k")
-DEFAULT_VIDEO_FRAMES_BOXES = Path("C:/sutra-data/ocr/raw/video_frames_boxes")
-DEFAULT_XML_ROOT = Path("C:/sutra-data/ocr/raw/indian_vehicle_xml")
+DEFAULT_PLATE_BOXES_2K = get_data_dir() / "ocr/raw/plate_boxes_2k"
+DEFAULT_VIDEO_FRAMES_BOXES = get_data_dir() / "ocr/raw/video_frames_boxes"
+DEFAULT_XML_ROOT = get_data_dir() / "ocr/raw/indian_vehicle_xml"
 
 Box = tuple[float, float, float, float]
 
@@ -348,14 +350,14 @@ def main() -> None:
         help=(
             "STEP D: also evaluate this checkpoint (engine.perception.finetune_detector's "
             "output) on the held-out vid-3 test set ONLY "
-            "(C:/sutra-data/ocr/detector_finetune/holdout_vid3/), tiled inference, and "
+            "(<data_dir>/ocr/detector_finetune/holdout_vid3/), tiled inference, and "
             "compare against the approved (pre-fine-tune) weights on the SAME held-out set."
         ),
     )
     parser.add_argument(
         "--holdout-dir",
         type=Path,
-        default=Path("C:/sutra-data/ocr/detector_finetune/holdout_vid3"),
+        default=get_data_dir() / "ocr/detector_finetune/holdout_vid3",
     )
     parser.add_argument(
         "--only-step-d",

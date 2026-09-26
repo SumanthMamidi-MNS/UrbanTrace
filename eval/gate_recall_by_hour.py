@@ -1,6 +1,7 @@
 """CLI: gate true-predecessor recall and mean candidates per event, broken
 down BY HOUR OF DAY, on an ON-DISK dataset (e.g. `data/run1` or a
-production-scale run like `C:/sutra-data/runs/run2`).
+production-scale run like `<data_dir>/runs/run2`, where `<data_dir>` is
+`URBANTRACE_DATA_DIR`, see `engine.paths`).
 
 Diagnoses whether an aggregate recall number hides a rush-hour collapse:
 the lead measured recall=0.997 at night but 0.68 at 08h and 0.70 at 17h on
@@ -22,10 +23,10 @@ bias every kinematic likelihood).
 
 Usage:
     python -m eval.gate_recall_by_hour --data data/run1
-    python -m eval.gate_recall_by_hour --data C:/sutra-data/runs/run2 \\
+    python -m eval.gate_recall_by_hour --data <data_dir>/runs/run2 \\
         --out eval/reports/gate_recall_by_hour.json
     # Reproduce the pre-fix (old) gate behaviour for comparison:
-    python -m eval.gate_recall_by_hour --data C:/sutra-data/runs/run2 \\
+    python -m eval.gate_recall_by_hour --data <data_dir>/runs/run2 \\
         --congestion-tail-factor 1.0 --out eval/reports/gate_recall_by_hour_old.json
 """
 

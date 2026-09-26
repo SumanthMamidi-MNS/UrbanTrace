@@ -1,9 +1,9 @@
-# SUTRA dev tasks. Windows teammates: use `make.ps1` instead (same target
-# names) if you don't have `make` on PATH -- e.g. `./make.ps1 setup`.
+# UrbanTrace dev tasks. Windows teammates: use `make.ps1` instead (same
+# target names) if you don't have `make` on PATH -- e.g. `./make.ps1 setup`.
 #
-# SUTRA_DB_PATH should point OUTSIDE this (OneDrive-synced) folder -- see
-# README's troubleshooting section. Example (bash): export
-# SUTRA_DB_PATH=~/.local/share/sutra/sutra.db
+# URBANTRACE_DB_PATH (or the legacy SUTRA_DB_PATH) should point OUTSIDE this
+# (OneDrive-synced) folder -- see README's troubleshooting section. Example
+# (bash): export URBANTRACE_DB_PATH=~/.local/share/urbantrace/urbantrace.db
 
 ifeq ($(OS),Windows_NT)
     PY := .venv/Scripts/python.exe
@@ -11,7 +11,13 @@ else
     PY := .venv/bin/python
 endif
 
-DB ?= data/sutra.db
+ifdef URBANTRACE_DB_PATH
+    DB ?= $(URBANTRACE_DB_PATH)
+else ifdef SUTRA_DB_PATH
+    DB ?= $(SUTRA_DB_PATH)
+else
+    DB ?= data/urbantrace.db
+endif
 
 .PHONY: setup test lint sim pipeline ingest serve docker-up docker-seed
 
@@ -49,7 +55,7 @@ serve:
 	$(PY) -m uvicorn api.main:app --port 8000
 
 docker-up:
-	docker compose up --build sutra
+	docker compose up --build urbantrace
 
 docker-seed:
 	docker compose --profile seed run --rm seed

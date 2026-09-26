@@ -18,7 +18,7 @@ const CHANNELS: { key: string; label: string }[] = [
   { key: 'plate_auc', label: 'Plate only' },
   { key: 'appearance_auc', label: 'Appearance' },
   { key: 'kinematic_auc', label: 'Kinematic' },
-  { key: 'fused_auc', label: 'Fused (SUTRA)' },
+  { key: 'fused_auc', label: 'Fused (UrbanTrace)' },
 ]
 
 /** AUC cell shade: 0.5 (chance) is neutral, 1.0 is full accent. */
@@ -377,7 +377,7 @@ export function ResultsPage() {
         {get('detector_holdout_video') || get('detector_eval') ? <DetectorSection holdout={get('detector_holdout_video')} evalR={get('detector_eval')} /> : <NotYet title="Plate detector" />}
 
         <SectionHeading id="res-linking" title="3 · Trajectory linking" sub="PRD component 2: does linking reads into trajectories beat plate matching?" />
-        {get('trajectory_metrics') || get('baselines') || get('ablation') ? <LinkingSection traj={get('trajectory_metrics')} baselines={get('baselines')} ablation={get('ablation')} /> : <NotYet title="Baselines vs SUTRA" />}
+        {get('trajectory_metrics') || get('baselines') || get('ablation') ? <LinkingSection traj={get('trajectory_metrics')} baselines={get('baselines')} ablation={get('ablation')} /> : <NotYet title="Baselines vs UrbanTrace" />}
 
         <SectionHeading id="res-stress" title="4 · Stress test" />
         {get('stress_sweep') ? <StressSection r={get('stress_sweep')} /> : <NotYet title="Stress sweep" />}

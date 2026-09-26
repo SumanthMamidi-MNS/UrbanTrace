@@ -1,13 +1,14 @@
 <#
-    SUTRA dev tasks (Windows PowerShell equivalent of the Makefile).
+    UrbanTrace dev tasks (Windows PowerShell equivalent of the Makefile).
 
     Usage:  ./make.ps1 <target>
     Targets: setup, test, lint, sim, pipeline, ingest, serve, docker-up, docker-seed
 
-    SUTRA_DB_PATH is set here to $env:LOCALAPPDATA\sutra\sutra.db by default --
-    OUTSIDE this OneDrive-synced project folder, where SQLite write latency is
-    much lower (see README's troubleshooting section). Override it yourself
-    before calling this script if you want a different location.
+    URBANTRACE_DB_PATH is set here to $env:LOCALAPPDATA\urbantrace\urbantrace.db
+    by default -- OUTSIDE this OneDrive-synced project folder, where SQLite
+    write latency is much lower (see README's troubleshooting section).
+    Override it yourself (or set the legacy SUTRA_DB_PATH) before calling
+    this script if you want a different location.
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -23,10 +24,14 @@ param(
 $ErrorActionPreference = "Stop"
 $PY = ".\.venv\Scripts\python.exe"
 
-if (-not $env:SUTRA_DB_PATH) {
-    $env:SUTRA_DB_PATH = Join-Path $env:LOCALAPPDATA "sutra\sutra.db"
+if (-not $env:URBANTRACE_DB_PATH) {
+    if ($env:SUTRA_DB_PATH) {
+        $env:URBANTRACE_DB_PATH = $env:SUTRA_DB_PATH
+    } else {
+        $env:URBANTRACE_DB_PATH = Join-Path $env:LOCALAPPDATA "urbantrace\urbantrace.db"
+    }
 }
-New-Item -ItemType Directory -Force -Path (Split-Path $env:SUTRA_DB_PATH) | Out-Null
+New-Item -ItemType Directory -Force -Path (Split-Path $env:URBANTRACE_DB_PATH) | Out-Null
 
 switch ($Target) {
     "setup" {
@@ -56,13 +61,13 @@ switch ($Target) {
         & $PY -m eval.run_pipeline --data data/run1 --out data/run1/pipeline
     }
     "ingest" {
-        & $PY -m api.ingest --data data/run1 --trajectories data/run1/pipeline/trajectories.jsonl --db $env:SUTRA_DB_PATH
+        & $PY -m api.ingest --data data/run1 --trajectories data/run1/pipeline/trajectories.jsonl --db $env:URBANTRACE_DB_PATH
     }
     "serve" {
         & $PY -m uvicorn api.main:app --port 8000
     }
     "docker-up" {
-        docker compose up --build sutra
+        docker compose up --build urbantrace
     }
     "docker-seed" {
         docker compose --profile seed run --rm seed

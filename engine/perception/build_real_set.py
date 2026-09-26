@@ -1,12 +1,13 @@
 """Build the REAL OCR labels/crops set from
-C:/sutra-data/ocr/raw/indian_vehicle_xml/ (1,697 real photos, Pascal-VOC XML
+<data_dir>/ocr/raw/indian_vehicle_xml/ (1,697 real photos, Pascal-VOC XML
 per image: `<object><bndbox>` is the plate box, `<object><name>` is the
-plate text). See C:/sutra-data/ocr/raw/README.md for provenance and the
+plate text), where `<data_dir>` is `URBANTRACE_DATA_DIR` (see
+`engine.paths`). See `<data_dir>/ocr/raw/README.md` for provenance and the
 lead's own spot-checks.
 
 Runs under either venv (only needs Pillow, stdlib xml, and the grammar/
 contracts modules below -- no torch), but is meant to be run once, offline,
-to produce C:/sutra-data/ocr/real/{train,val,test}/ in EXACTLY the schema
+to produce `<data_dir>/ocr/real/{train,val,test}/` in EXACTLY the schema
 engine.perception.synth_plates.py already writes and train_ocr.py/
 eval_ocr.py already read: image_path, canonical, text_line1, text_line2,
 layout, style, condition.
@@ -113,11 +114,12 @@ from PIL import Image
 
 from api.plate_grammar import GrammarError, enumerate_canonical_forms
 from engine.contracts.plate import BLANK
+from engine.paths import get_data_dir
 from engine.perception.ctc_to_slots import canonical_string_to_slots
 
-DEFAULT_RAW_ROOT = Path("C:/sutra-data/ocr/raw/indian_vehicle_xml")
-DEFAULT_OUT = Path("C:/sutra-data/ocr/real")
-DEFAULT_CHECKPOINT = Path("C:/sutra-data/ocr/runs/synth/best.pt")
+DEFAULT_RAW_ROOT = get_data_dir() / "ocr/raw/indian_vehicle_xml"
+DEFAULT_OUT = get_data_dir() / "ocr/real"
+DEFAULT_CHECKPOINT = get_data_dir() / "ocr/runs/synth/best.pt"
 SOURCES = ["State-wise_OLX", "google_images", "video_images"]
 IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG", ".Jpg", ".Jpeg", ".Png"]
 

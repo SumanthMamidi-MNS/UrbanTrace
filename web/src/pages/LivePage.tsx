@@ -139,9 +139,9 @@ export function LivePage() {
   const liveTrajs = useLive((s) => s.trajectories)
   const readsSinceOpen = useLive((s) => s.eventsSinceLoad)
   const navigate = useNavigate()
-  const [heatOn, setHeatOn] = usePersisted('sutra.heat.on', false, isBool)
-  const [metric, setMetric] = usePersisted<HeatMetric>('sutra.heat.metric', 'density', isMetric)
-  const [source, setSource] = usePersisted<HeatSource>('sutra.heat.source', 'live', isSource)
+  const [heatOn, setHeatOn] = usePersisted('urbantrace.heat.on', false, isBool)
+  const [metric, setMetric] = usePersisted<HeatMetric>('urbantrace.heat.metric', 'density', isMetric)
+  const [source, setSource] = usePersisted<HeatSource>('urbantrace.heat.source', 'live', isSource)
   const heat = useHeat(city.data, { enabled: heatOn, metric, source, windowMin: HEAT_WINDOW_MIN })
   const mapHeat = useMemo(() => toMapHeat(heat), [heat])
 
