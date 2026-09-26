@@ -1,31 +1,59 @@
-<div align="center">
+<p align="center">
+  <img src="docs/assets/urbantrace-logo.svg" alt="UrbanTrace" height="88">
+</p>
+<h3 align="center">
+  <strong>City-Scale Probabilistic Vehicle Tracking</strong><br>
+  <small>Multi-Camera ANPR Fusion &bull; Trajectory Reconstruction &bull; Real-Time Analytics</small>
+</h3>
 
-# UrbanTrace
+<p align="center">
+  <a href="https://www.python.org/"><img src="docs/assets/badges/python.svg" alt="Python 3.12" height="30"></a>
+  <a href="https://fastapi.tiangolo.com"><img src="docs/assets/badges/fastapi.svg" alt="FastAPI REST + WS" height="30"></a>
+  <a href="docs/backend.md#perception"><img src="docs/assets/badges/ocr.svg" alt="Plate OCR: fast-plate-ocr + YOLO" height="30"></a>
+  <a href="docs/architecture.md#min-cost-flow"><img src="docs/assets/badges/flow.svg" alt="Association: Min-Cost Flow" height="30"></a>
+  <a href="eval/reports/trajectory_metrics.json"><img src="docs/assets/badges/tracking.svg" alt="Tracking: IDF1 0.972" height="30"></a>
+  <a href="docs/frontend.md"><img src="docs/assets/badges/console.svg" alt="Console: React + MapLibre" height="30"></a>
+  <a href="docs/decisions.md"><img src="docs/assets/badges/offline.svg" alt="Engine: Zero Cloud APIs" height="30"></a>
+  <a href="tests/"><img src="docs/assets/badges/tests.svg" alt="468 Passing" height="30"></a>
+  <a href="LICENSE"><img src="docs/assets/badges/license.svg" alt="MIT License" height="30"></a>
+</p>
 
-### City-scale vehicle tracking that reasons in probabilities, not string matches.
+<p align="center">
+  City-scale vehicle tracking that reasons in probabilities, not string matches.<br>
+  An AI engine for city-wide ANPR networks: it fuses noisy plate reads, vehicle appearance and travel time into vehicle journeys, traffic analytics and real-time alerts.
+</p>
 
-An AI engine for city-wide ANPR networks: it fuses noisy plate reads, vehicle appearance and travel time
-into vehicle journeys, traffic analytics and real-time alerts.
+<p align="center"><img src="docs/assets/divider.svg" width="100%" height="1" alt=""></p>
 
-[![CI](https://github.com/SumanthMamidi-MNS/UrbanTrace/actions/workflows/ci.yml/badge.svg)](https://github.com/SumanthMamidi-MNS/UrbanTrace/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-468%20passing-brightgreen)
-![Docker](https://img.shields.io/badge/docker-329%20MB-2496ED?logo=docker&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-blue)
+<details open>
+<summary><strong>Table of Contents</strong></summary>
 
-![Python 3.12](https://img.shields.io/badge/Python%203.12-3776AB?logo=python&logoColor=white) ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white) ![YOLO](https://img.shields.io/badge/YOLO-111F68?logo=ultralytics&logoColor=white) ![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-005CED?logo=onnx&logoColor=white) ![NumPy](https://img.shields.io/badge/NumPy-013243?logo=numpy&logoColor=white) ![NetworkX](https://img.shields.io/badge/NetworkX-2C5BB4?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white) ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white) ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?logo=pydantic&logoColor=white) ![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white) ![MapLibre GL](https://img.shields.io/badge/MapLibre%20GL-396CB2?logo=maplibre&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
+1. [Why this exists](#why-this-exists)
+2. [How it works](#how-it-works)
+3. [What it does](#what-it-does)
+4. [A look inside](#a-look-inside)
+5. [Results at a glance](#results-at-a-glance)
+6. [Quickstart](#quickstart)
+7. [Tech stack](#tech-stack)
+8. [Repository](#repository)
+9. [Acknowledgements](#acknowledgements)
+10. [License](#license)
 
-**IDF1 0.972 vs 0.875** for exact plate matching on a congested 20,000-vehicle city day ·
-**9× fewer identity errors** · **94.3% per-character OCR** on held-out real Indian plates ·
-runs offline on a laptop, no cloud APIs
+</details>
 
-<img src="docs/images/live-map.png" alt="UrbanTrace live map: camera network with a traffic-density heatmap, an alerted trajectory, the alert feed and the live read ticker" width="100%">
+<p align="center"><img src="docs/assets/divider.svg" width="100%" height="1" alt=""></p>
 
-<sub>Built for Smart India Hackathon problem SIH26127 (Bharat Electronics Ltd.) —
-<a href="docs/PRD.md">problem statement</a></sub>
+<p align="center">
+  <strong>IDF1 0.972 vs 0.875</strong> for exact plate matching on a congested 20,000-vehicle city day &bull;
+  <strong>9&times; fewer identity errors</strong> &bull; <strong>94.3% per-character OCR</strong> on held-out real Indian plates &bull;
+  runs offline on a laptop, no cloud APIs
+</p>
 
-</div>
+<p align="center">
+  <a href="docs/images/live-map.png"><img src="docs/images/live-map.png" alt="UrbanTrace live map: camera network with a traffic-density heatmap, an alerted trajectory, the alert feed and the live read ticker" width="100%"></a>
+</p>
 
----
+<p align="center"><img src="docs/assets/divider.svg" width="100%" height="1" alt=""></p>
 
 ## Why this exists
 
@@ -70,6 +98,19 @@ The four components the problem statement asks for, all working end to end:
 | 3 | **Traffic analytics dashboard** | Density and speed heatmaps (live), average speeds per corridor, origin–destination matrix, route volumes, flow trends and a congestion-bottleneck ranking. |
 | 4 | **Real-time alerts** | Probabilistic watchlist (catches a blacklisted vehicle even when one camera misreads it), cloned-plate detection, impossible-travel and route-anomaly alerts, streamed over WebSocket. |
 
+## A look inside
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/trajectory.png" alt="Trajectory detail"><br><sub><b>A journey, explained.</b> Eight cameras saw this car and three misread its plate; fusing the reads recovers <code>RJ78IV2345</code> at 99.95%. Every link shows its plate, appearance and travel-time evidence.</sub></td>
+<td width="50%"><img src="docs/images/alerts.png" alt="Cloned-plate alert"><br><sub><b>A cloned plate, caught.</b> The same plate 591 m apart in 11 s would need 185 km/h, and the two vehicles look different: two cars, one plate.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/images/analytics.png" alt="Analytics dashboard"><br><sub><b>City analytics</b> from the same journeys: volumes, origin–destination flows, speed trends and congestion bottlenecks.</sub></td>
+<td width="50%"><img src="docs/images/results.png" alt="Results page"><br><sub><b>Evidence in the app.</b> The Results page renders every report in <code>eval/reports/</code>, starting with OCR on real Indian plates.</sub></td>
+</tr>
+</table>
+
 ## Results at a glance
 
 | | Result | Evidence |
@@ -90,19 +131,6 @@ Nothing is tuned on what it is scored on, and the weak spots are reported alongs
 - **Small, distant plates** in general traffic footage: detector recall 0.51 on held-out video. ANPR-positioned cameras close most of this gap.
 - **Tracking is evaluated in simulation**, because only a simulator gives ground-truth journeys; the OCR is measured on real plates.
 - **Ultralytics (the detector library) is AGPL-3.0** — fine for a prototype, needs a commercial licence or a swap for production.
-
-## A look inside
-
-<table>
-<tr>
-<td width="50%"><img src="docs/images/trajectory.png" alt="Trajectory detail"><br><sub><b>A journey, explained.</b> Eight cameras saw this car and three misread its plate; fusing the reads recovers <code>RJ78IV2345</code> at 99.95%. Every link shows its plate, appearance and travel-time evidence.</sub></td>
-<td width="50%"><img src="docs/images/alerts.png" alt="Cloned-plate alert"><br><sub><b>A cloned plate, caught.</b> The same plate 591 m apart in 11 s would need 185 km/h, and the two vehicles look different: two cars, one plate.</sub></td>
-</tr>
-<tr>
-<td width="50%"><img src="docs/images/analytics.png" alt="Analytics dashboard"><br><sub><b>City analytics</b> from the same journeys: volumes, origin–destination flows, speed trends and congestion bottlenecks.</sub></td>
-<td width="50%"><img src="docs/images/results.png" alt="Results page"><br><sub><b>Evidence in the app.</b> The Results page renders every report in <code>eval/reports/</code>, starting with OCR on real Indian plates.</sub></td>
-</tr>
-</table>
 
 ## Quickstart
 
@@ -159,4 +187,12 @@ docs/        architecture, frontend, backend, decisions, results, setup, API con
 
 ## License
 
-[MIT](LICENSE) © 2026 Sumanth
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
+
+<p align="center"><img src="docs/assets/divider.svg" width="100%" height="1" alt=""></p>
+
+<p align="center">
+  Designed &amp; Developed by <a href="https://github.com/SumanthMamidi-MNS">Sumanth Mamidi</a><br>
+  <sub>For Smart India Hackathon (SIH26127) &bull; Bharat Electronics Limited (BEL)</sub>
+</p>
+
