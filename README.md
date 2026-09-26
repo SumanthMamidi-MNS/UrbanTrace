@@ -7,13 +7,12 @@
 An AI engine for city-wide ANPR networks: it fuses noisy plate reads, vehicle appearance and travel time
 into vehicle journeys, traffic analytics and real-time alerts.
 
-![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-REST%20%2B%20WebSocket-009688?logo=fastapi&logoColor=white)
-![React](https://img.shields.io/badge/React-TypeScript-61DAFB?logo=react&logoColor=black)
-![MapLibre](https://img.shields.io/badge/MapLibre-GIS-396CB2)
 [![CI](https://github.com/SumanthMamidi-MNS/UrbanTrace/actions/workflows/ci.yml/badge.svg)](https://github.com/SumanthMamidi-MNS/UrbanTrace/actions/workflows/ci.yml)
 ![Tests](https://img.shields.io/badge/tests-468%20passing-brightgreen)
+![Docker](https://img.shields.io/badge/docker-329%20MB-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
+
+![Python 3.12](https://img.shields.io/badge/Python%203.12-3776AB?logo=python&logoColor=white) ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white) ![YOLO](https://img.shields.io/badge/YOLO-111F68?logo=ultralytics&logoColor=white) ![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-005CED?logo=onnx&logoColor=white) ![NumPy](https://img.shields.io/badge/NumPy-013243?logo=numpy&logoColor=white) ![NetworkX](https://img.shields.io/badge/NetworkX-2C5BB4?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white) ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white) ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?logo=pydantic&logoColor=white) ![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white) ![MapLibre GL](https://img.shields.io/badge/MapLibre%20GL-396CB2?logo=maplibre&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
 
 **IDF1 0.972 vs 0.875** for exact plate matching on a congested 20,000-vehicle city day ·
 **9× fewer identity errors** · **94.3% per-character OCR** on held-out real Indian plates ·
@@ -125,13 +124,18 @@ Windows commands, the task runners (`make` / `make.ps1`), tests and troubleshoot
 
 ## Tech stack
 
-| Layer | Tools |
-|---|---|
-| Linking engine | Python 3.12, NumPy, NetworkX; own successive-shortest-path min-cost-flow solver (verified against NetworkX's optimum) |
-| Perception | Ultralytics YOLO (plate detection), fast-plate-ocr (recognition), PyTorch (own CRNN baseline) |
-| API | FastAPI, WebSocket replay, SQLAlchemy + SQLite |
-| Console | React, TypeScript, Vite, Tailwind, MapLibre GL, Recharts, TanStack Query |
-| Quality | pytest (468 tests), ruff, oxlint, GitHub Actions |
+| Area | Technologies | Used for |
+|---|---|---|
+| Plate detection | Ultralytics YOLO, OpenCV | Finding plates in video frames; fine-tuned on Indian street scenes |
+| Plate recognition | fast-plate-ocr, ONNX Runtime, PyTorch | Per-character plate probabilities; fine-tuned on real Indian plates; own CRNN + CTC baseline in PyTorch |
+| Linking engine | Python 3.12, NumPy, NetworkX, rapidfuzz | Vectorised likelihood scoring; own min-cost-flow solver (verified against NetworkX's optimum); overflow plate index |
+| Simulation | Own city simulator, BPR congestion model | Ground-truth journeys for measuring tracking; noise pinned to published real-world figures |
+| Evaluation | SciPy, scikit-learn | Calibration, IDF1, stratified AUC, stress sweeps, ablations |
+| API | FastAPI, Uvicorn, WebSockets, Pydantic v2 | Typed REST, live replay stream, shared data contracts |
+| Storage | SQLAlchemy, SQLite | Cameras, reads, journeys, alerts and watchlist in one file |
+| Console | React, TypeScript, Vite, Tailwind CSS | Operator UI with seven pages |
+| Maps and charts | MapLibre GL, Recharts, TanStack Query | Offline GIS map from the road graph, heatmaps, dashboards, cached server data |
+| Delivery | Docker (multi-stage), GitHub Actions, pytest, ruff, oxlint | 329 MB image, CI on every push, 468 tests |
 
 ## Repository
 
@@ -142,7 +146,7 @@ api/         FastAPI REST + WebSocket server, SQLite ingest
 web/         React + MapLibre operator console
 eval/        evaluation scripts; reports/ holds every measured number
 tests/       468 pytest tests, including exactness checks against reference implementations
-docs/        architecture, decisions, results, setup, API contract, problem statement
+docs/        architecture, frontend, backend, decisions, results, setup, API contract, problem statement
 ```
 
 ## Acknowledgements
