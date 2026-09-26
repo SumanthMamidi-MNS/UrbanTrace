@@ -20,6 +20,7 @@ models/
 *.db
 *.sqlite3
 *.mp4
+dataset/
 
 # Node (the web-build stage runs its own `npm ci` inside the image)
 web/node_modules/
