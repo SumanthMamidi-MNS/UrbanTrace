@@ -119,7 +119,7 @@ python -m api.ingest --data data/run1 --trajectories data/run1/pipeline/trajecto
 python -m uvicorn api.main:app --port 8000                                               # open http://localhost:8000
 ```
 
-Or with Docker: `docker compose --profile seed run --rm seed && docker compose up --build urbantrace`.
+Or with Docker (329 MB image, API + console in one container): `docker compose --profile seed run --rm seed && docker compose up --build urbantrace`.
 Windows commands, the task runners (`make` / `make.ps1`), tests and troubleshooting: [docs/setup.md](docs/setup.md).
 
 ## Tech stack

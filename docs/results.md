@@ -107,7 +107,7 @@ With two vehicles sharing one plate string, plate evidence alone is a coin flip;
 - **Tracking over-splits:** 21,218 journeys for 19,996 vehicles on the congested day. We prefer that to over-merging, which would invent journeys that never happened.
 - **The tracking evaluation is simulated**, pinned to published real-world figures (per-read plate accuracy 85–95%, appearance re-identification ~70% at benchmark scale, rush-hour bottlenecks at ~40–60% of free-flow speed) with tests that fail if the noise drifts. Every simulated trip starts and ends at the city boundary, so the grid interior carries little traffic.
 - **Licensing:** the detector library (Ultralytics) is AGPL-3.0 — fine for a prototype; production needs a commercial licence or an Apache-licensed detector.
-- **The Docker image has never been built** — the daemon would not start on the development machine. The non-Docker quickstart is verified end to end.
+- **Docker:** the image builds and serves end to end (`docker compose build`, seed, `up`; health, UI, trajectories and eval endpoints checked). Image size 329 MB — runtime dependencies only.
 
 ## Where the evidence lives
 

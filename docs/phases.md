@@ -15,17 +15,10 @@ The PRD asks for **four components**. This plan is organised around them, plus t
 | 3. City traffic analytics dashboard | **Done** — heatmaps (density/speed, live), corridor speeds, OD, volumes, flow trend, bottleneck ranking |
 | 4. Alert system | **Done** — probabilistic watchlist (single read + trajectory consensus), clone, impossible-travel, route anomalies, live |
 | Evaluation & evidence | **Done** — rerun on the congested day; gate recall hole found and fixed |
-| Packaging & GitHub readiness | **In progress** — renamed UrbanTrace, portfolio README, MIT licence, slim Docker, CI; Docker image not yet built (no working daemon here) |
+| Packaging & GitHub readiness | **Done** — portfolio README with flowchart and screenshots, MIT licence, CI, 329 MB Docker image verified end to end, published to GitHub |
 
----|---|
-| 1. High-precision OCR module (deep learning, >90% on real Indian plates) | **Built and measured on real plates: 81.0% whole-plate / 94.3% character** — >90% met per character, **not** per whole plate. Detector: held-out video recall 0.51 (small far plates are the main weakness) |
-| 2. Trajectory reconstruction engine (query a plate → chronological path on a GIS map) | Built and verified; full-city IDF1 **0.9914** vs 0.8746. Direction of travel in progress |
-| 3. City traffic analytics dashboard (heatmaps, speeds, densities, OD, congestion, real time) | Partly built — heatmap, speeds and flow trend in progress (contract v2) |
-| 4. Alert system (blacklisted vehicles + suspicious routes, real time) | Partly built — probabilistic watchlist in progress (contract v2) |
-| Evaluation & evidence | Built; kinematic defect fixed; link threshold calibrated on a training day |
-| Packaging & demo | Built; Docker image never actually built |
 
-Last checkpoint commit: `ec38bd3` (local only, not pushed). Rename, packaging and GitHub-readiness work is committed next, after tests pass.
+Published to GitHub (`main`): https://github.com/SumanthMamidi-MNS/UrbanTrace
 
 ---
 
@@ -87,9 +80,10 @@ Last checkpoint commit: `ec38bd3` (local only, not pushed). Rename, packaging an
 **Done:** one-command local serve (verified), Makefile and `make.ps1`, demo script and judge Q&A refreshed for the congested run, rename to **UrbanTrace** with portable paths (`engine/paths.py`), portfolio README front page (tagline, PRD components, results at a glance, mermaid architecture), MIT licence, slim runtime Docker image (runtime deps only), CI workflow, vendored OFL font so tests pass on a fresh clone, demo DB re-ingested clean.
 
 **Remaining:**
-- [ ] Build and run the Docker image on a machine with a working Docker daemon; record the real image size.
-- [ ] README screenshots (console captured from the real API).
-- [ ] Owner: create the GitHub repo, set About/topics, push.
+- [x] Docker image built and run end to end: 329 MB, seed + serve verified.
+- [x] README screenshots from the real API, plus a pipeline flowchart.
+- [x] Published to GitHub on `main`.
+- [ ] Owner: set the GitHub About text and topics.
 
 **Done means:** a fresh clone passes CI, the quickstart works from the README alone, and the image builds.
 
