@@ -11,6 +11,7 @@ into vehicle journeys, traffic analytics and real-time alerts.
 ![FastAPI](https://img.shields.io/badge/FastAPI-REST%20%2B%20WebSocket-009688?logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-TypeScript-61DAFB?logo=react&logoColor=black)
 ![MapLibre](https://img.shields.io/badge/MapLibre-GIS-396CB2)
+[![CI](https://github.com/SumanthMamidi-MNS/UrbanTrace/actions/workflows/ci.yml/badge.svg)](https://github.com/SumanthMamidi-MNS/UrbanTrace/actions/workflows/ci.yml)
 ![Tests](https://img.shields.io/badge/tests-468%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
