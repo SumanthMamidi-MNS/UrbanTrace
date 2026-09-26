@@ -7,6 +7,7 @@ import { liveStore, useLive } from '../hooks/liveStore'
 import { fmtDateTime, fmtNum } from '../lib/format'
 import { IconAlert, IconChart, IconLive, IconPause, IconPlay, IconReset, IconResults, IconRoute, IconSearch, IconWatch } from './icons'
 import { Button, cx, Segmented } from './ui'
+import { BrandMark, Wordmark } from './Wordmark'
 
 const NAV = [
   { to: '/live', label: 'Live', icon: IconLive },
@@ -100,12 +101,7 @@ export function Layout() {
     <div className="flex h-full min-h-0 bg-ink-900">
       <nav aria-label="Primary" className="flex w-[68px] shrink-0 flex-col items-stretch border-r border-ink-700 bg-ink-950">
         <div className="flex h-12 items-center justify-center border-b border-ink-700" title="UrbanTrace">
-          <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden>
-            <path d="M4 22 C10 22 10 10 16 10 S22 22 28 22" fill="none" stroke="#3cc4d8" strokeWidth="2.4" strokeLinecap="round" />
-            <circle cx="4" cy="22" r="2.4" fill="#3cc4d8" />
-            <circle cx="16" cy="10" r="2.4" fill="#3cc4d8" />
-            <circle cx="28" cy="22" r="2.4" fill="#3cc4d8" />
-          </svg>
+          <BrandMark size={28} />
         </div>
         <ul className="flex flex-col py-1">
           {NAV.map(({ to, label, icon: Icon }) => (
@@ -130,8 +126,9 @@ export function Layout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-ink-700 bg-ink-950 px-3">
-          <div className="flex min-w-0 items-baseline gap-3">
-            <span className="text-[15px] font-bold tracking-[0.18em] text-fg-strong">UrbanTrace</span>
+          <div className="flex min-w-0 items-center gap-3">
+            <Wordmark />
+            <span className="hidden h-4 w-px shrink-0 bg-ink-600 lg:block" aria-hidden />
             <span className="hidden min-w-0 truncate text-xs text-fg-dim lg:block" title="City-scale vehicle tracking that reasons in probabilities, not string matches.">
               City-scale vehicle tracking that reasons in probabilities, not string matches.
             </span>
