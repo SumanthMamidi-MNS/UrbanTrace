@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 32" width="170" height="32" fill="none">
+  <defs>
+    <linearGradient id="tests-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="50%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="tests-gloss" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+    </linearGradient>
+  </defs>
+  <style>
+    @keyframes badgeGlow {
+      0%, 100% { filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.45)); }
+      50% { filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.9)) drop-shadow(0 0 20px rgba(60, 196, 216, 0.45)); }
+    }
+    .pulsing-badge { animation: badgeGlow 2.4s ease-in-out infinite; }
+    .badge-label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11.5px; font-weight: 600; fill: #FFFFFF; }
+    .badge-value { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11.5px; font-weight: 700; fill: #FFFFFF; }
+  </style>
+  <g class="pulsing-badge">
+  <rect x="0.5" y="0.5" width="169" height="31" rx="6" fill="#161B22" stroke="rgba(52, 211, 153, 0.6)" stroke-width="1"/>
+  <g transform="translate(8, 7)"><path d="M5 2 H13 M9 2 V6.5 L3.5 15 C3 15.8 3.5 17 4.5 17 H13.5 C14.5 17 15 15.8 14.5 15 L9 6.5" fill="none" stroke="#34D399" stroke-width="1.6" stroke-linecap="round"/><path d="M6 13.5 L8 15.5 L12 10.5" fill="none" stroke="#FACC15" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <text x="32" y="20" class="badge-label">Tests</text>
+  <rect x="74" y="3.5" width="92" height="25" rx="4.5" fill="url(#tests-grad)" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+  <rect x="74" y="3.5" width="92" height="12.5" rx="4.5" fill="url(#tests-gloss)"/>
+  <text x="120.0" y="20" text-anchor="middle" class="badge-value">468 Passing</text>
+  </g>
+</svg>

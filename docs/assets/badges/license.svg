@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127 32" width="127" height="32" fill="none">
+  <defs>
+    <linearGradient id="license-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D4D4D4"/>
+      <stop offset="50%" stop-color="#737373"/>
+      <stop offset="100%" stop-color="#404040"/>
+    </linearGradient>
+    <linearGradient id="license-gloss" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+    </linearGradient>
+  </defs>
+  <style>
+    .badge-label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11.5px; font-weight: 600; fill: #FFFFFF; }
+    .badge-value { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11.5px; font-weight: 700; fill: #FFFFFF; }
+  </style>
+  <rect x="0.5" y="0.5" width="126" height="31" rx="6" fill="#161B22" stroke="rgba(163, 163, 163, 0.45)" stroke-width="1"/>
+  <g transform="translate(8, 7)"><rect x="3" y="1.5" width="11" height="14" rx="1.6" fill="#E5E7EB"/><rect x="5" y="4.5" width="7" height="1.4" rx="0.7" fill="#6B7280"/><rect x="5" y="7.5" width="5" height="1.4" rx="0.7" fill="#6B7280"/><circle cx="13" cy="13" r="3.4" fill="#A3A3A3" stroke="#FFFFFF" stroke-width="1"/></g>
+  <text x="32" y="20" class="badge-label">License</text>
+  <rect x="86" y="3.5" width="37" height="25" rx="4.5" fill="url(#license-grad)" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+  <rect x="86" y="3.5" width="37" height="12.5" rx="4.5" fill="url(#license-gloss)"/>
+  <text x="104.5" y="20" text-anchor="middle" class="badge-value">MIT</text>
+</svg>

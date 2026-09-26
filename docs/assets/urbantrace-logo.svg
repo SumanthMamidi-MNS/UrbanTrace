@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 116" width="520" height="116" fill="none">
+  <defs>
+    <!-- Radiant Signal Cyan Gradient for Border -->
+    <linearGradient id="ut-cyan-border" x1="6" y1="6" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A5F3FC"/>
+      <stop offset="35%" stop-color="#6FDCEC"/>
+      <stop offset="70%" stop-color="#3CC4D8"/>
+      <stop offset="100%" stop-color="#1D6F7C"/>
+    </linearGradient>
+
+    <!-- Trajectory Path Gradient along Direction of Travel -->
+    <linearGradient id="ut-track-grad" x1="22" y1="66" x2="72" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1D6F7C"/>
+      <stop offset="50%" stop-color="#3CC4D8"/>
+      <stop offset="100%" stop-color="#6FDCEC"/>
+    </linearGradient>
+
+    <!-- Smooth Ambient Vector Aura Gradient -->
+    <radialGradient id="ut-vector-aura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#CFFAFE" stop-opacity="0.85"/>
+      <stop offset="30%" stop-color="#6FDCEC" stop-opacity="0.6"/>
+      <stop offset="60%" stop-color="#3CC4D8" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#1D6F7C" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <style>
+    /* 1. Ambient Background Vector Aura Breathing */
+    @keyframes auraBreathe {
+      0%, 100% { opacity: 0.35; }
+      50% { opacity: 0.75; }
+    }
+    .animated-aura {
+      animation: auraBreathe 3.6s ease-in-out infinite;
+    }
+
+    /* 2. Camera 3 Surveillance Sonar Waves (Triple Concentric, Extended Distance) */
+    @keyframes sonarWave1 {
+      0% {
+        opacity: 0;
+        transform: scale(0.65);
+        stroke-width: 2.6px;
+      }
+      15% {
+        opacity: 0.95;
+        stroke: #A5F3FC;
+      }
+      65% {
+        opacity: 0.45;
+        stroke: #3CC4D8;
+      }
+      100% {
+        opacity: 0;
+        transform: scale(2.2);
+        stroke-width: 1.2px;
+      }
+    }
+    @keyframes sonarWave2 {
+      0%, 25% {
+        opacity: 0;
+        transform: scale(0.65);
+        stroke-width: 2.6px;
+      }
+      40% {
+        opacity: 0.9;
+        stroke: #6FDCEC;
+      }
+      80% {
+        opacity: 0.35;
+        stroke: #2A9FB1;
+      }
+      100% {
+        opacity: 0;
+        transform: scale(2.2);
+        stroke-width: 1.2px;
+      }
+    }
+    @keyframes sonarWave3 {
+      0%, 50% {
+        opacity: 0;
+        transform: scale(0.65);
+        stroke-width: 2.6px;
+      }
+      65% {
+        opacity: 0.85;
+        stroke: #3CC4D8;
+      }
+      90% {
+        opacity: 0.25;
+        stroke: #1D6F7C;
+      }
+      100% {
+        opacity: 0;
+        transform: scale(2.2);
+        stroke-width: 1.2px;
+      }
+    }
+    .sonar-1 {
+      transform-origin: 72px 32px;
+      animation: sonarWave1 1.8s ease-out infinite;
+    }
+    .sonar-2 {
+      transform-origin: 72px 32px;
+      animation: sonarWave2 1.8s ease-out infinite;
+    }
+    .sonar-3 {
+      transform-origin: 72px 32px;
+      animation: sonarWave3 1.8s ease-out infinite;
+    }
+
+    /* 3. Camera 3 Active Sensor LED Heartbeat */
+    @keyframes sensorBeat {
+      0%, 100% {
+        fill: #6FDCEC;
+        transform: scale(1);
+      }
+      50% {
+        fill: #FFFFFF;
+        transform: scale(1.3);
+      }
+    }
+    .sensor-led {
+      transform-origin: 72px 32px;
+      animation: sensorBeat 1.8s ease-in-out infinite;
+    }
+
+    /* 4. Typography */
+    .ut-wordmark {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      font-size: 72px;
+      letter-spacing: -1.2px;
+    }
+    .ut-urban {
+      font-weight: 600;
+      fill: #FFFFFF;
+    }
+    .ut-trace {
+      font-weight: 600;
+      fill: #3CC4D8;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .ut-urban {
+        fill: #0F172A;
+      }
+      .ut-trace {
+        fill: #0891B2;
+      }
+    }
+  </style>
+
+  <!-- Centered Lockup: BrandMark Trajectory Squircle and Wordmark -->
+  <g transform="translate(18, 10)">
+    <!-- BrandMark Icon Container -->
+    <g transform="translate(0, 0)">
+      <!-- Smooth Ambient Vector Aura -->
+      <ellipse cx="48" cy="48" rx="54" ry="54" fill="url(#ut-vector-aura)" class="animated-aura"/>
+
+      <!-- Sleek Dark-Core Squircle with Radiant Cyan Border -->
+      <rect x="6" y="6" width="84" height="84" rx="20"
+            fill="#070A0E"
+            stroke="url(#ut-cyan-border)"
+            stroke-width="4.5"
+            stroke-linejoin="round"/>
+
+      <!-- Inner Subtle Border Highlight -->
+      <rect x="9.5" y="9.5" width="77" height="77" rx="17"
+            fill="none"
+            stroke="#A5F3FC"
+            stroke-width="0.8"
+            stroke-opacity="0.4"/>
+
+      <!-- Solid Crisp Trajectory Track (Option A) -->
+      <path d="M22 66 L44 36 L72 32"
+            fill="none"
+            stroke="url(#ut-track-grad)"
+            stroke-width="5.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"/>
+
+      <!-- Camera 1 Sighting Node -->
+      <circle cx="22" cy="66" r="6.5" fill="#070A0E" stroke="#2A9FB1" stroke-width="4.5"/>
+
+      <!-- Camera 2 Sighting Node -->
+      <circle cx="44" cy="36" r="6.5" fill="#070A0E" stroke="#3CC4D8" stroke-width="4.5"/>
+
+      <!-- Camera 3 Target Halo -->
+      <circle cx="72" cy="32" r="14" fill="#3CC4D8" opacity="0.2"/>
+
+      <!-- Camera 3 Node Housing -->
+      <circle cx="72" cy="32" r="7.5" fill="#6FDCEC"/>
+
+      <!-- Camera 3 Active Sensor Core LED -->
+      <circle cx="72" cy="32" r="3" fill="#FFFFFF" class="sensor-led"/>
+
+      <!-- Directional Surveillance Sonar Waves (Triple Concentric, Traveling Distance) -->
+      <path d="M82 22 A14 14 0 0 1 84 42"
+            fill="none"
+            stroke="#6FDCEC"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            class="sonar-1"/>
+
+      <path d="M82 22 A14 14 0 0 1 84 42"
+            fill="none"
+            stroke="#3CC4D8"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            class="sonar-2"/>
+
+      <path d="M82 22 A14 14 0 0 1 84 42"
+            fill="none"
+            stroke="#A5F3FC"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            class="sonar-3"/>
+    </g>
+
+    <!-- Wordmark "UrbanTrace" (72px font size, two-tone, vertically centered) -->
+    <text x="122" y="74" class="ut-wordmark">
+      <tspan class="ut-urban">Urban</tspan><tspan class="ut-trace">Trace</tspan>
+    </text>
+  </g>
+</svg>

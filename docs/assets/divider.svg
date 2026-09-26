@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1" width="1200" height="1" fill="none">
+  <style>
+    .hairline { stroke: #30363D; }
+    @media (prefers-color-scheme: light) {
+      .hairline { stroke: #D0D7DE; }
+    }
+  </style>
+  <line x1="0" y1="0.5" x2="1200" y2="0.5" class="hairline" stroke-width="1"/>
+</svg>
