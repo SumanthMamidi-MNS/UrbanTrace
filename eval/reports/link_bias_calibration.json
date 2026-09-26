@@ -1,0 +1,122 @@
+{
+  "description": "Beta (link_bias) calibration sweep on a TRAINING day -- NEVER data/run1 (the project's evaluation set, seed=42). This training day has its own smaller city+vehicle population, scaled down together (not just thinned) from run1's 50 cameras / 20000 vehicles by factor scale=1.0, so vehicles-per-camera (and hence rush-hour reads-per-camera) matches run1's exactly: 20000 vehicles / 50 cameras = 400 veh/cam vs run1's 400 veh/cam. hours=24 (full day, unshortened -- see module docstring on why shortening would distort rush-hour timing via sim.vehicles' minute-of-day demand curve clipping). clone_fraction=0.02 and all other CorruptionConfig fields are defaults, identical to run1's config.json. Training day seed=20260926 (run1's seed is 42 -- must differ, checked at runtime). Priors (plate/kinematic/appearance) and entry/exit costs are fit on a THIRD independent seed=20269927 (8000 vehicles), same city -- eval/run_pipeline.py's own train-split pattern, reused via direct import.",
+  "run1_reference": {
+    "seed": 42,
+    "cameras": 50,
+    "vehicles": 20000,
+    "hours": 24,
+    "clone_fraction": 0.02,
+    "note": "reference numbers only -- data/run1 itself was never read by this script"
+  },
+  "training_day": {
+    "seed": 20260926,
+    "scale": 1.0,
+    "cameras": 50,
+    "vehicles": 20000,
+    "hours": 24,
+    "clone_fraction": 0.02,
+    "vehicles_per_camera": 400.0,
+    "n_events": 111279,
+    "n_gt_vehicles_true": 19990,
+    "generation_s": 31.875871181488037,
+    "congestion": true
+  },
+  "priors_split": {
+    "seed": 20269927,
+    "seed_offset": 9001,
+    "vehicles": 8000,
+    "hours": 24,
+    "clone_fraction": 0.02,
+    "generation_and_fit_s": 41.34170079231262,
+    "congestion": true
+  },
+  "sweep": [
+    {
+      "beta": 0.0,
+      "idf1": 0.9463420771214694,
+      "id_precision": 0.9463420771214694,
+      "id_recall": 0.9463420771214694,
+      "id_switches": 5621,
+      "fragmentation": 4483,
+      "trajectory_completeness": 0.9538286356520473,
+      "n_predicted_trajectories": 24443,
+      "n_gt_vehicles": 19990,
+      "n_events": 111279,
+      "n_windows": 97,
+      "solve_s": 837.4935083389282
+    },
+    {
+      "beta": 1.0,
+      "idf1": 0.9525157487037087,
+      "id_precision": 0.9525157487037087,
+      "id_recall": 0.9525157487037087,
+      "id_switches": 4916,
+      "fragmentation": 3900,
+      "trajectory_completeness": 0.9592083570922991,
+      "n_predicted_trajectories": 23850,
+      "n_gt_vehicles": 19990,
+      "n_events": 111279,
+      "n_windows": 97,
+      "solve_s": 911.5857331752777
+    },
+    {
+      "beta": 2.0,
+      "idf1": 0.9584378004834695,
+      "id_precision": 0.9584378004834695,
+      "id_recall": 0.9584378004834695,
+      "id_switches": 4287,
+      "fragmentation": 3364,
+      "trajectory_completeness": 0.9643946731940729,
+      "n_predicted_trajectories": 23297,
+      "n_gt_vehicles": 19990,
+      "n_events": 111279,
+      "n_windows": 97,
+      "solve_s": 870.1536452770233
+    },
+    {
+      "beta": 3.0,
+      "idf1": 0.9631916174660089,
+      "id_precision": 0.9631916174660089,
+      "id_recall": 0.9631916174660089,
+      "id_switches": 3691,
+      "fragmentation": 2856,
+      "trajectory_completeness": 0.9694433709528757,
+      "n_predicted_trajectories": 22754,
+      "n_gt_vehicles": 19990,
+      "n_events": 111279,
+      "n_windows": 97,
+      "solve_s": 839.0083315372467
+    }
+  ],
+  "clear_margin_idf1": 0.003,
+  "baseline_beta0": {
+    "beta": 0.0,
+    "idf1": 0.9463420771214694,
+    "id_precision": 0.9463420771214694,
+    "id_recall": 0.9463420771214694,
+    "id_switches": 5621,
+    "fragmentation": 4483,
+    "trajectory_completeness": 0.9538286356520473,
+    "n_predicted_trajectories": 24443,
+    "n_gt_vehicles": 19990,
+    "n_events": 111279,
+    "n_windows": 97,
+    "solve_s": 837.4935083389282
+  },
+  "best_by_idf1": {
+    "beta": 3.0,
+    "idf1": 0.9631916174660089,
+    "id_precision": 0.9631916174660089,
+    "id_recall": 0.9631916174660089,
+    "id_switches": 3691,
+    "fragmentation": 2856,
+    "trajectory_completeness": 0.9694433709528757,
+    "n_predicted_trajectories": 22754,
+    "n_gt_vehicles": 19990,
+    "n_events": 111279,
+    "n_windows": 97,
+    "solve_s": 839.0083315372467
+  },
+  "chosen_beta": 3.0,
+  "decision": "beta=3.0 beats beta=0 by 0.0168 IDF1 (> the 0.003 clear-margin threshold) on the training day -- adopting it as eval/run_pipeline.py's new default."
+}

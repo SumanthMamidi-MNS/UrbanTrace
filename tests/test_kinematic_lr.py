@@ -5,6 +5,11 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
+from engine.association.gating import Gate, gate_candidates
+from engine.calibration.fit_priors import (
+    fit_negative_kinematic_model,
+    generate_train_holdout_datasets,
+)
 from engine.scoring.kinematic_lr import (
     KinematicModel,
     fit_kinematic_model,
@@ -15,6 +20,138 @@ from sim.city import generate_city
 from sim.generate import generate_dataset
 
 T0 = datetime(2026, 1, 1, 8, 0, 0)
+
+
+def _fit_before_after():
+    """Shared fixture-ish helper for the kinematic-defect-fix tests below:
+    p1-only ("before", the model as `fit_kinematic_model` alone produces --
+    still what every OTHER caller of it gets, see `fit_negative_kinematic_
+    model`'s docstring) vs. p1+empirically-fit-p0 ("after",
+    `engine.calibration.fit_priors.fit_all`'s real production path)."""
+    train_ds, _ = generate_train_holdout_datasets(
+        n_cameras=15,
+        n_vehicles_train=800,
+        n_vehicles_holdout=500,
+        hours=6,
+        city_seed=11,
+        train_seed=21,
+        holdout_seed=31,
+        clone_fraction=0.02,
+    )
+    events = train_ds.events
+    model_before = fit_kinematic_model(events, train_ds.city)
+    gate = Gate(model=model_before)
+    gate_result = gate_candidates(events, gate)
+    model_after = fit_negative_kinematic_model(model_before, events)
+    return events, gate_result, model_before, model_after
+
+
+def _gated_negative_log_lrs(events, gate_result, model) -> list[float]:
+    """log_lr for every GATED pair the ground truth says is a DIFFERENT
+    vehicle -- exactly `fit_negative_kinematic_priors`'s own negative
+    sample space, scored through `model`."""
+    events_by_id = {e.event_id: e for e in events}
+    out = []
+    for succ_id, pred_ids in gate_result.candidates.items():
+        succ = events_by_id.get(succ_id)
+        if succ is None or succ.gt_vehicle_id is None:
+            continue
+        for pred_id in pred_ids:
+            pred = events_by_id.get(pred_id)
+            if pred is None or pred.gt_vehicle_id is None:
+                continue
+            if pred.gt_vehicle_id == succ.gt_vehicle_id:
+                continue
+            result = model.score(pred.camera_id, pred.timestamp, succ.camera_id, succ.timestamp)
+            out.append(result.log_lr)
+    return out
+
+
+def _consecutive_positive_log_lrs(events, model) -> list[float]:
+    """log_lr for every literal consecutive (adjacent) same-vehicle passage
+    -- a genuine positive link, unlike "any gated pair sharing a
+    gt_vehicle_id" (which can include non-adjacent multi-hop pairs the
+    kinematic channel is CORRECTLY not confident about)."""
+    by_vehicle: dict[str, list] = {}
+    for e in events:
+        if e.gt_vehicle_id is not None:
+            by_vehicle.setdefault(e.gt_vehicle_id, []).append(e)
+    out = []
+    for evs in by_vehicle.values():
+        evs_sorted = sorted(evs, key=lambda e: e.timestamp)
+        for a, b in zip(evs_sorted[:-1], evs_sorted[1:], strict=True):
+            if (b.timestamp - a.timestamp).total_seconds() <= 0:
+                continue
+            result = model.score(a.camera_id, a.timestamp, b.camera_id, b.timestamp)
+            out.append(result.log_lr)
+    return out
+
+
+def test_negative_gated_pairs_no_longer_get_an_inflated_positive_lr():
+    """THE kinematic-defect fix (docs/decisions.md): p0(dt) used to be a
+    flat density over the whole gate window, which is misspecified -- a
+    different vehicle admitted by the SAME spatio-temporal gate is not
+    arriving at a uniformly random time, it's on the same road, so its dt
+    clusters near the free-flow time too. That silently rewarded roughly
+    HALF of all gated negative pairs with a positive kinematic LR (measured
+    below), which is exactly what drove plate+kinematic's over-merging
+    (2,347 predicted trajectories for 2,498 true vehicles in
+    eval/reports/ablation.json). After empirically fitting p0 on the
+    train split's own gated negatives, the negative population is clearly
+    centred well below zero and only rarely positive."""
+    events, gate_result, model_before, model_after = _fit_before_after()
+    before = np.array(_gated_negative_log_lrs(events, gate_result, model_before))
+    after = np.array(_gated_negative_log_lrs(events, gate_result, model_after))
+    before_finite = before[np.isfinite(before)]
+    after_finite = after[np.isfinite(after)]
+    assert len(after_finite) > 1000, "too few gated negative pairs to measure reliably"
+
+    frac_positive_before = float((before_finite > 0).mean())
+    mean_after = float(after_finite.mean())
+    frac_positive_after = float((after_finite > 0).mean())
+    print(
+        f"\nnegative gated pairs: before mean={before_finite.mean():.4f} "
+        f"frac_positive={frac_positive_before:.4f} | "
+        f"after mean={mean_after:.4f} frac_positive={frac_positive_after:.4f}"
+    )
+
+    # Historical defect, still reproducible via the uniform-H0 fallback
+    # (`KinematicModel.neg_priors is None`): a large minority of DIFFERENT-
+    # vehicle gated pairs got an outright positive kinematic endorsement.
+    assert frac_positive_before > 0.3, (
+        "expected the flat-H0 fallback to reproduce the historical defect "
+        f"(>=30% of gated negatives falsely positive), got {frac_positive_before:.4f}"
+    )
+
+    # The fix: negatives are now clearly negative on average and only
+    # rarely positive.
+    assert mean_after < 0, f"mean kinematic LR over negatives is {mean_after:.4f}, expected < 0"
+    assert frac_positive_after < 0.3, (
+        f"{frac_positive_after:.1%} of gated negatives still score positive, expected < 30%"
+    )
+
+
+def test_positive_pairs_are_still_clearly_positive_after_the_fix():
+    """The other half of the fix's contract: fixing the over-confident
+    negative side must not zero out the channel's real signal on genuine
+    (consecutive, same-vehicle) links."""
+    events, _gate_result, _model_before, model_after = _fit_before_after()
+    after = np.array(_consecutive_positive_log_lrs(events, model_after))
+    after_finite = after[np.isfinite(after)]
+    assert len(after_finite) > 100, "too few positive pairs to measure reliably"
+
+    mean_after = float(after_finite.mean())
+    frac_positive_after = float((after_finite > 0).mean())
+    print(
+        f"\npositive (consecutive) pairs after: mean={mean_after:.4f} "
+        f"frac_positive={frac_positive_after:.4f}"
+    )
+
+    assert mean_after > 0, f"mean kinematic LR over positives is {mean_after:.4f}, expected > 0"
+    assert frac_positive_after > 0.6, (
+        f"only {frac_positive_after:.1%} of genuine same-vehicle links score positive, "
+        f"expected a clear majority (> 60%)"
+    )
 
 
 def _model(n_cameras=15, seed=5) -> tuple[KinematicModel, list[str]]:

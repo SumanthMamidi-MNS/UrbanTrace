@@ -112,3 +112,80 @@ Server → client JSON messages, one per frame:
 ```
 
 Replay is driven by `POST /api/replay`; the socket only streams.
+
+---
+
+## Contract v2 additions (2026-09-25, lead sign-off) — PRD components 2, 3, 4
+
+Additive only: every v1 field and endpoint is unchanged. Clients built against v1 keep working.
+
+### Changed types (new optional-safe fields)
+
+```ts
+// Alert.type gains "watchlist"; Alert.evidence gains watchlist fields.
+type Alert = {
+  ...v1 fields,
+  type: "clone" | "impossible_travel" | "anomaly" | "watchlist";
+  evidence: {
+    ...v1 evidence fields,
+    watchlist_entry_id?: string; pattern?: string; match_probability?: number;
+    matched_on?: "single_read" | "trajectory_consensus";
+  };
+}
+
+// Direction of travel (PRD: "direction ... and route").
+type PathPoint = { ...v1 fields, heading_deg: number | null }   // bearing to the NEXT point, 0 = north, clockwise; null on the last point
+type TrajectoryDetail = { ...v1 fields, overall_heading_deg: number | null; direction_label: string | null }  // first->last camera, label = N/NE/E/SE/S/SW/W/NW
+
+// Corridor speeds (PRD: "average vehicle speeds").
+type Corridor = { ...v1 fields (from_camera, to_camera, n_trips, median_travel_s, p90_travel_s, free_flow_s, congestion_index),
+                  distance_m: number; avg_speed_kmh: number; p85_speed_kmh: number; free_flow_speed_kmh: number }
+```
+
+### New types
+
+```ts
+type WatchlistEntry = {
+  entry_id: string;
+  pattern: string;              // as typed by the operator, same grammar as /api/search ("MH12??1234", "DL3C?456")
+  canonical_patterns: string[]; // grammar-consistent 10-slot forms it expands to
+  reason: string;               // free text, e.g. "stolen vehicle FIR 1234/2026"
+  created_at: string;
+  active: boolean;
+  hits: number;
+}
+
+type WatchlistHit = {
+  hit_id: string; entry_id: string; pattern: string;
+  event_id: string; trajectory_id: string | null; camera_id: string; timestamp: string;
+  probability: number;                          // P(plate matches pattern | evidence)
+  matched_on: "single_read" | "trajectory_consensus";
+  plate_read: string;                           // what this camera actually read (plate_argmax)
+}
+
+type HeatPoint = { camera_id: string; lat: number; lon: number; weight: number }
+type Heatmap = { at: string; window_minutes: number; metric: "density" | "speed"; points: HeatPoint[] }
+
+type FlowBucket = { bucket_start: string; events: number; active_trajectories: number; mean_speed_kmh: number | null }
+```
+
+### New endpoints
+
+| Method | Path | Query / body | Returns |
+|---|---|---|---|
+| GET | `/api/watchlist` | — | `WatchlistEntry[]` |
+| POST | `/api/watchlist` | body `{ pattern: string, reason: string }` | `WatchlistEntry` (422 with a helpful detail if the pattern cannot be a plate) |
+| DELETE | `/api/watchlist/{entry_id}` | — | `{ deleted: true }` |
+| GET | `/api/watchlist/hits` | `entry_id?, limit?` | `WatchlistHit[]` (newest first) |
+| GET | `/api/analytics/heatmap` | `at? (default: current sim time, or end of data), window_minutes? (default 15), metric? ("density" default, or "speed")` | `Heatmap` |
+| GET | `/api/analytics/flow_trend` | `bucket_minutes? (default 15)` | `FlowBucket[]` |
+
+### Semantics
+
+- **Watchlist matching is probabilistic.** A read matches when P(plate ∈ pattern | evidence) ≥ 0.5 (server constant, documented). It is evaluated twice:
+  1. on each **single read**, using that read's own plate posterior;
+  2. on the **trajectory consensus** as the trajectory grows.
+  The second is the differentiator: a watchlisted vehicle is caught **even when this camera misread its plate**, because the fused plate across cameras still matches. Each (entry, trajectory) pair alerts at most once; later matches become hits, not new alerts.
+- Watchlist entries persist in the database. During replay, matches emit `alert` messages on `/ws/live` in real time, exactly like other alerts.
+- **Heatmap `density`** = reads per camera in the window, normalised to [0, 1]. **`speed`** = mean speed of trajectory links arriving at that camera in the window (km/h). The UI's live heatmap may instead accumulate `/ws/live` events client-side; both must agree on the definition.
+- **Speeds** use road-graph shortest-path distance between consecutive cameras divided by the observed travel time; links implying more than the kinematic `v_max` are excluded (they are clone evidence, not speed).

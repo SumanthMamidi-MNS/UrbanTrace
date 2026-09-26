@@ -1,0 +1,99 @@
+{
+  "description": "Stress sweep (architecture.md \u00a78) on 20-camera/2000-vehicle/3h in-memory datasets, one FRESH dataset per point, SAME city throughout. The engine (FusionModel/gate/entry-exit) is fit ONCE on a nominal-corruption train split (1200 vehicles, different seed, same city) and then evaluated UNCHANGED against every point's held-out data as corruption worsens -- see module docstring for why this (not a re-fit-per-point design) is the realistic test. Measured on the FIXED engine (per-successor prior + corrected arc cost). OCR-axis measured_whole_plate_accuracy is the ACTUAL measured value (eval.metrics.whole_plate_accuracy), not the corruption knob.",
+  "dataset": {
+    "n_cameras": 20,
+    "n_vehicles_per_point": 2000,
+    "n_vehicles_train": 1200,
+    "hours": 3,
+    "clone_fraction": 0.02,
+    "city_seed": 8301,
+    "train_seed": 8401
+  },
+  "ocr_noise_sweep": [
+    {
+      "knob_p_char_correct": 0.99,
+      "knob_p_occlude": 0.03,
+      "measured_whole_plate_accuracy": 0.8884840804688737,
+      "sutra_idf1": 0.9787739584983368,
+      "baseline_a_idf1": 0.8845239980991605,
+      "gap": 0.09424996039917632,
+      "n_events": 6313,
+      "elapsed_s": 69.7530837059021
+    },
+    {
+      "knob_p_char_correct": 0.965,
+      "knob_p_occlude": 0.03,
+      "measured_whole_plate_accuracy": 0.7037914691943128,
+      "sutra_idf1": 0.9788309636650869,
+      "baseline_a_idf1": 0.7170616113744076,
+      "gap": 0.2617693522906793,
+      "n_events": 6330,
+      "elapsed_s": 81.08218050003052
+    },
+    {
+      "knob_p_char_correct": 0.955,
+      "knob_p_occlude": 0.03,
+      "measured_whole_plate_accuracy": 0.6378541865647883,
+      "sutra_idf1": 0.9762814390321554,
+      "baseline_a_idf1": 0.657274753263292,
+      "gap": 0.3190066857688634,
+      "n_events": 6282,
+      "elapsed_s": 85.59113073348999
+    },
+    {
+      "knob_p_char_correct": 0.94,
+      "knob_p_occlude": 0.03,
+      "measured_whole_plate_accuracy": 0.5517132480656877,
+      "sutra_idf1": 0.986104531817464,
+      "baseline_a_idf1": 0.588504658139902,
+      "gap": 0.397599873677562,
+      "n_events": 6333,
+      "elapsed_s": 66.09143567085266
+    },
+    {
+      "knob_p_char_correct": 0.93,
+      "knob_p_occlude": 0.03,
+      "measured_whole_plate_accuracy": 0.49984207201516107,
+      "sutra_idf1": 0.9801010739102969,
+      "baseline_a_idf1": 0.5530638029058749,
+      "gap": 0.427037271004422,
+      "n_events": 6332,
+      "elapsed_s": 77.18854999542236
+    }
+  ],
+  "camera_miss_sweep": [
+    {
+      "p_miss": 0.0,
+      "sutra_idf1": 0.985879525311702,
+      "baseline_a_idf1": 0.8768213910169746,
+      "gap": 0.10905813429472733,
+      "n_events": 6657,
+      "elapsed_s": 50.59354567527771
+    },
+    {
+      "p_miss": 0.1,
+      "sutra_idf1": 0.9892940782870525,
+      "baseline_a_idf1": 0.8778855804616928,
+      "gap": 0.11140849782535966,
+      "n_events": 5978,
+      "elapsed_s": 125.23897099494934
+    },
+    {
+      "p_miss": 0.2,
+      "sutra_idf1": 0.9707491979618796,
+      "baseline_a_idf1": 0.8860162294772599,
+      "gap": 0.08473296848461975,
+      "n_events": 5299,
+      "elapsed_s": 53.11324501037598
+    },
+    {
+      "p_miss": 0.3,
+      "sutra_idf1": 0.9766561514195583,
+      "baseline_a_idf1": 0.8879074658254469,
+      "gap": 0.08874868559411142,
+      "n_events": 4755,
+      "elapsed_s": 38.209136724472046
+    }
+  ],
+  "widen_or_not_answer": "OCR-noise axis: gap WIDENS as accuracy drops -- 0.0942 at 88.8% measured accuracy vs 0.4270 at 50.0%. Camera-miss axis: gap does NOT widen as p_miss rises -- 0.1091 at p_miss=0 vs 0.0887 at p_miss=0.3. At least one axis does NOT support the headline claim as measured here."
+}

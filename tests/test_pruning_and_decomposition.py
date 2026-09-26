@@ -187,6 +187,104 @@ def test_solver_still_matches_networkx_oracle_after_pruning():
     assert abs(our_cost - oracle_cost) < 1e-4
 
 
+BETAS_FOR_PRUNING_TEST = [-3.0, -1.0, 0.0, 1.0, 3.0]
+
+
+@pytest.mark.parametrize("seed", range(N_TRIALS))
+@pytest.mark.parametrize("beta", BETAS_FOR_PRUNING_TEST)
+def test_pruning_stays_exact_under_nonzero_link_bias(seed, beta):
+    """`link_bias` (beta, docs/decisions.md's calibration sweep) shifts
+    every link arc's cost by a constant `-beta` (engine.association.window's
+    `link_bias`), so the link threshold moves from `s(i,j) > 0` to
+    `s(i,j) > -beta` -- but `prune_dominated_arcs`'s bypass comparison must
+    still use the UNBIASED exit/entry costs (the bypass literally routes
+    through those arcs, which beta never touches). This reproduces
+    `test_pruned_and_unpruned_reach_the_same_optimal_cost` but with a beta
+    shift baked into the arc costs first, the same way
+    `engine.association.window._solve_one_window` builds them, to prove
+    dominance pruning is still lossless at every swept beta value."""
+    event_ids, entry_cost, detection_cost, exit_cost, base_arcs = _random_costs(seed)
+    arcs = [(pred, succ, cost - beta) for pred, succ, cost in base_arcs]
+
+    unpruned_cost, _ = _build_solver(
+        event_ids, entry_cost, detection_cost, exit_cost, arcs
+    ).solve(0, 1)
+
+    pruned_arcs = prune_dominated_arcs(arcs, exit_cost, entry_cost)
+    assert len(pruned_arcs) <= len(arcs)
+    pruned_cost, _ = _build_solver(
+        event_ids, entry_cost, detection_cost, exit_cost, pruned_arcs
+    ).solve(0, 1)
+
+    assert abs(unpruned_cost - pruned_cost) < FLOAT_TOL, (
+        f"seed={seed} beta={beta}: pruning changed the optimal cost "
+        f"({unpruned_cost} unpruned vs {pruned_cost} pruned, "
+        f"{len(arcs)}->{len(pruned_arcs)} arcs)"
+    )
+
+
+@pytest.mark.parametrize("beta", BETAS_FOR_PRUNING_TEST)
+def test_pruning_matches_unpruned_on_a_real_small_window_with_link_bias(beta):
+    """Same claim as `test_pruning_matches_unpruned_on_a_real_small_window`,
+    with a nonzero beta baked into the real scored arcs the same way
+    `engine.association.window._solve_one_window` does -- confirms the
+    dominance-pruning exactness proof holds on real fused-score data, not
+    just synthetic random costs, at every swept beta value."""
+    city = generate_city(n_cameras=8, seed=1)
+    ds = generate_dataset_with_city(city, n_vehicles=120, hours=1, seed=5, clone_fraction=0.0)
+    models = fit_all(ds)
+    fusion_model = FusionModel(
+        plate_priors=models.plate_priors,
+        kinematic_model=models.kinematic_model,
+        appearance_model=models.appearance_model,
+    )
+    entry_exit = fit_entry_exit_costs(ds.events, ds.city)
+    gate = Gate(model=models.kinematic_model)
+
+    events = sorted(ds.events, key=lambda e: e.timestamp)
+    assert len(events) > 20, "need a real handful of events for this to mean anything"
+    index_of = {e.event_id: i for i, e in enumerate(events)}
+    border_cameras = {c.camera_id for c in ds.city.cameras if c.is_border}
+    entry_cost = {
+        e.event_id: entry_exit.entry_cost(e.camera_id in border_cameras) for e in events
+    }
+    exit_cost = {e.event_id: entry_exit.exit_cost(e.camera_id in border_cameras) for e in events}
+    detection_cost = {e.event_id: real_detection_cost(e) for e in events}
+
+    gate_result = gate_candidates(events, gate)
+    pred_idx, succ_idx = [], []
+    for succ_id, pred_ids in gate_result.candidates.items():
+        for pred_id in pred_ids:
+            pred_idx.append(index_of[pred_id])
+            succ_idx.append(index_of[succ_id])
+    assert pred_idx, "need real gated pairs for this to mean anything"
+
+    totals = score_pairs_batch_totals(events, np.array(pred_idx), np.array(succ_idx), fusion_model)
+    event_ids = [e.event_id for e in events]
+    all_arcs = [
+        (
+            events[pred_idx[k]].event_id,
+            events[succ_idx[k]].event_id,
+            -float(totals[k])
+            + exit_cost[events[pred_idx[k]].event_id]
+            + entry_cost[events[succ_idx[k]].event_id]
+            - beta,
+        )
+        for k in range(len(pred_idx))
+    ]
+
+    unpruned_cost, _ = _build_solver(
+        event_ids, entry_cost, detection_cost, exit_cost, all_arcs
+    ).solve(0, 1)
+    pruned_arcs = prune_dominated_arcs(all_arcs, exit_cost, entry_cost)
+    print(f"real window beta={beta}: kept {len(pruned_arcs)}/{len(all_arcs)} arcs")
+    pruned_cost, _ = _build_solver(
+        event_ids, entry_cost, detection_cost, exit_cost, pruned_arcs
+    ).solve(0, 1)
+
+    assert abs(unpruned_cost - pruned_cost) < FLOAT_TOL
+
+
 def test_pruning_matches_unpruned_on_a_real_small_window():
     """Same claim as `test_pruned_and_unpruned_reach_the_same_optimal_cost`,
     but with REAL scored arcs from the actual pipeline (gating + fused

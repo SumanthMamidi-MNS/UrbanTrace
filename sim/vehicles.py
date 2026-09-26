@@ -18,6 +18,7 @@ import bisect
 import itertools
 import math
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -25,6 +26,7 @@ import networkx as nx
 
 from engine.contracts.city import CityConfig
 from engine.contracts.plate import BLANK
+from sim.congestion import CongestionConfig, VolumeCounts, make_congestion_fn, record_volume
 
 SIM_EPOCH = datetime(2026, 1, 1, 0, 0, 0)
 
@@ -222,12 +224,23 @@ def _walk_route(
     node_to_camera: dict[str, str],
     vrng: random.Random,
     vehicle_id: str,
+    edge_time_fn: Callable[[str, str, datetime], float] | None = None,
+    volume_sink: VolumeCounts | None = None,
+    epoch: datetime = SIM_EPOCH,
+    bucket_minutes: int = 5,
 ) -> tuple[list[str], list[Passage]]:
     """Walk `route` (a list of road-graph node ids) forward in time from
     `start_time`, emitting a Passage at every node that hosts a camera.
     Shared by the main per-vehicle journey generation and by clone
     route-overlap regeneration (`_inject_clones`) so both build passages the
-    same way."""
+    same way.
+
+    `edge_time_fn` and `volume_sink` are the congestion knob's hooks (see
+    `sim/congestion.py` and `generate_vehicles_and_journeys`'s two-pass
+    scheme below); both default to None/off, in which case this function's
+    arithmetic is byte-for-byte the original (pre-congestion) code path --
+    that branch is deliberately left untouched so `congestion=False` keeps
+    reproducing the pre-existing behaviour exactly."""
     t = start_time
     passages: list[Passage] = []
     camera_sequence: list[str] = []
@@ -241,9 +254,23 @@ def _walk_route(
         edge_data = graph.get_edge_data(u, v)
         speed_kmh = edge_data["speed_limit_kmh"]
         length_m = edge_data["length_m"]
-        noise_factor = vrng.lognormvariate(0, EDGE_SPEED_NOISE_SIGMA)
-        effective_speed_ms = max(speed_kmh, 1.0) * 1000.0 / 3600.0 / max(noise_factor, 1e-3)
-        travel_s = length_m / effective_speed_ms
+
+        if volume_sink is not None:
+            record_volume(volume_sink, u, v, t, epoch, bucket_minutes)
+
+        if edge_time_fn is None:
+            noise_factor = vrng.lognormvariate(0, EDGE_SPEED_NOISE_SIGMA)
+            effective_speed_ms = max(speed_kmh, 1.0) * 1000.0 / 3600.0 / max(noise_factor, 1e-3)
+            travel_s = length_m / effective_speed_ms
+        else:
+            # Same per-edge lognormal noise draw as the free-flow branch
+            # (same vrng call, same position in the call sequence across
+            # pass 1/pass 2 -- see generate_vehicles_and_journeys), with the
+            # BPR congestion multiplier applied on top of the free-flow time.
+            free_flow_travel_s = length_m / (max(speed_kmh, 1.0) * 1000.0 / 3600.0)
+            noise_factor = vrng.lognormvariate(0, EDGE_SPEED_NOISE_SIGMA)
+            congestion_multiplier = edge_time_fn(u, v, t)
+            travel_s = free_flow_travel_s * noise_factor * congestion_multiplier
         t = t + timedelta(seconds=travel_s)
 
         if v in node_to_camera:
@@ -262,9 +289,77 @@ def generate_vehicles_and_journeys(
     clone_fraction: float = 0.02,
     near_miss_fraction: float = 0.0,
     clone_route_overlap: float = 0.5,
+    congestion: bool = False,
+    congestion_config: CongestionConfig | None = None,
 ) -> tuple[list[Vehicle], list[Journey]]:
     """Generate a vehicle population and their journeys (route + ground-truth
-    camera passages). Deterministic given `seed`."""
+    camera passages). Deterministic given `seed`.
+
+    `congestion=False` (the default here -- callers that want it on opt in
+    explicitly; `sim.generate`'s CLI defaults it on for new datasets) takes
+    exactly the original single-pass free-flow-plus-lognormal-noise code
+    path via `_generate_core`, unchanged, so it keeps reproducing
+    pre-existing output byte-for-byte.
+
+    `congestion=True` runs `_generate_core` twice (see `sim/congestion.py`):
+    pass 1 at free flow to collect per-(edge, bucket) volumes; pass 2
+    re-derives BPR travel-time multipliers from those volumes and re-runs
+    the identical pipeline (same seeds, so identical routes/start times/
+    per-edge noise draws -- see `_walk_route`'s docstring) with them
+    applied. Two passes, not an iterative MSA loop: routes aren't
+    re-optimized against congested times here, so a third pass would only
+    recompute the same volumes."""
+    if not congestion:
+        return _generate_core(
+            city, n_vehicles, hours, seed, clone_fraction, near_miss_fraction, clone_route_overlap
+        )
+
+    cfg = congestion_config or CongestionConfig()
+    volume_counts: VolumeCounts = {}
+    _generate_core(
+        city,
+        n_vehicles,
+        hours,
+        seed,
+        clone_fraction,
+        near_miss_fraction,
+        clone_route_overlap,
+        volume_sink=volume_counts,
+    )
+
+    graph = city.to_digraph()
+    congestion_fn = make_congestion_fn(graph, volume_counts, SIM_EPOCH, cfg)
+    return _generate_core(
+        city,
+        n_vehicles,
+        hours,
+        seed,
+        clone_fraction,
+        near_miss_fraction,
+        clone_route_overlap,
+        edge_time_fn=congestion_fn,
+        bucket_minutes=cfg.bucket_minutes,
+    )
+
+
+def _generate_core(
+    city: CityConfig,
+    n_vehicles: int,
+    hours: int,
+    seed: int,
+    clone_fraction: float = 0.02,
+    near_miss_fraction: float = 0.0,
+    clone_route_overlap: float = 0.5,
+    edge_time_fn: Callable[[str, str, datetime], float] | None = None,
+    volume_sink: VolumeCounts | None = None,
+    bucket_minutes: int = 5,
+) -> tuple[list[Vehicle], list[Journey]]:
+    """The actual generation pipeline (vehicles -> routes -> walk -> clone
+    injection -> near-miss injection), parameterised by the congestion
+    hooks so `generate_vehicles_and_journeys` can run it once (off) or
+    twice (on, pass 1 free-flow / pass 2 congested) -- see that function's
+    docstring. `edge_time_fn=None, volume_sink=None` (the defaults) is the
+    original pre-congestion code path, untouched."""
     rng = random.Random(seed)
     graph = city.to_digraph()
     class_centers = _class_centers(rng)
@@ -311,7 +406,15 @@ def generate_vehicles_and_journeys(
 
         start_time = _sample_start_time(vrng, hours, cdf, total_weight)
         camera_sequence, passages = _walk_route(
-            graph, route, start_time, node_to_camera, vrng, vehicle_id
+            graph,
+            route,
+            start_time,
+            node_to_camera,
+            vrng,
+            vehicle_id,
+            edge_time_fn=edge_time_fn,
+            volume_sink=volume_sink,
+            bucket_minutes=bucket_minutes,
         )
 
         journeys.append(
@@ -332,6 +435,9 @@ def generate_vehicles_and_journeys(
         clone_fraction,
         clone_route_overlap,
         rng,
+        edge_time_fn=edge_time_fn,
+        volume_sink=volume_sink,
+        bucket_minutes=bucket_minutes,
     )
     _inject_near_miss_plates(vehicles, near_miss_fraction, rng)
 
@@ -351,6 +457,9 @@ def _inject_clones(
     clone_fraction: float,
     clone_route_overlap: float,
     rng: random.Random,
+    edge_time_fn: Callable[[str, str, datetime], float] | None = None,
+    volume_sink: VolumeCounts | None = None,
+    bucket_minutes: int = 5,
 ) -> None:
     """Give a fraction of vehicles the same true plate as another vehicle.
 
@@ -419,7 +528,15 @@ def _inject_clones(
         epoch_end = SIM_EPOCH + timedelta(hours=hours)
         start_time = max(SIM_EPOCH, min(start_time, epoch_end - timedelta(seconds=1)))
         camera_sequence, passages = _walk_route(
-            graph, route, start_time, node_to_camera, vrng, clone.gt_vehicle_id
+            graph,
+            route,
+            start_time,
+            node_to_camera,
+            vrng,
+            clone.gt_vehicle_id,
+            edge_time_fn=edge_time_fn,
+            volume_sink=volume_sink,
+            bucket_minutes=bucket_minutes,
         )
         journeys[idx] = Journey(
             gt_vehicle_id=clone.gt_vehicle_id,

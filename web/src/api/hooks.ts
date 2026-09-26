@@ -4,10 +4,14 @@ import type {
   AlertsQuery,
   CorridorsQuery,
   EventsQuery,
+  FlowTrendQuery,
+  HeatmapQuery,
   ReplayRequest,
   SearchQuery,
   TrajectoriesQuery,
   VolumesQuery,
+  WatchlistCreate,
+  WatchlistHitsQuery,
 } from './types'
 
 export const qk = {
@@ -25,6 +29,10 @@ export const qk = {
   corridors: (q: CorridorsQuery) => ['analytics', 'corridors', q] as const,
   alerts: (q: AlertsQuery) => ['alerts', q] as const,
   eval: ['eval'] as const,
+  watchlist: ['watchlist', 'entries'] as const,
+  watchlistHits: (q: WatchlistHitsQuery) => ['watchlist', 'hits', q] as const,
+  heatmap: (q: HeatmapQuery) => ['analytics', 'heatmap', q] as const,
+  flowTrend: (q: FlowTrendQuery) => ['analytics', 'flow_trend', q] as const,
 }
 
 export const useHealth = () => useQuery({ queryKey: qk.health, queryFn: () => api.health(), refetchInterval: 15_000 })
@@ -77,3 +85,33 @@ export function useReplay() {
     },
   })
 }
+
+// ---- v2
+
+export const useWatchlist = (refetchMs = 15_000) => useQuery({ queryKey: qk.watchlist, queryFn: () => api.watchlist(), refetchInterval: refetchMs })
+
+export const useWatchlistHits = (q: WatchlistHitsQuery = {}, enabled = true, refetchMs = 10_000) =>
+  useQuery({ queryKey: qk.watchlistHits(q), queryFn: () => api.watchlistHits(q), refetchInterval: refetchMs, placeholderData: keepPreviousData, enabled })
+
+export function useAddWatchlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: WatchlistCreate) => api.addWatchlist(body),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['watchlist'] }),
+  })
+}
+
+export function useDeleteWatchlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (entryId: string) => api.deleteWatchlist(entryId),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['watchlist'] }),
+  })
+}
+
+/** Static heatmap snapshot. `enabled` lets the Live page only fetch it when it is actually shown. */
+export const useHeatmap = (q: HeatmapQuery, enabled = true) =>
+  useQuery({ queryKey: qk.heatmap(q), queryFn: () => api.heatmap(q), enabled, placeholderData: keepPreviousData, refetchInterval: enabled ? 20_000 : false })
+
+export const useFlowTrend = (q: FlowTrendQuery) =>
+  useQuery({ queryKey: qk.flowTrend(q), queryFn: () => api.flowTrend(q), placeholderData: keepPreviousData, refetchInterval: 30_000 })

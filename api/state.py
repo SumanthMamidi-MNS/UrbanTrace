@@ -27,6 +27,7 @@ from api.db import (
     make_session_factory,
 )
 from engine.analytics.corridors import CorridorStats, compute_corridors
+from engine.analytics.heatmap import LinkArrival, compute_link_arrivals
 from engine.analytics.od_matrix import build_od_matrix
 from engine.contracts.city import CityConfig
 from engine.contracts.trajectory import Trajectory
@@ -38,6 +39,7 @@ CORRIDORS_CACHE_LIMIT = 2000
 class LiteEvent:
     camera_id: str
     timestamp: datetime
+    trajectory_id: str | None = None
 
 
 @dataclass
@@ -57,6 +59,12 @@ class AppState:
     corridors_cache: list[CorridorStats]
     camera_stats: dict[str, tuple[int, int]]  # camera_id -> (events_total, volume_last_hour)
     lite_events: list[LiteEvent]
+    # Contract v2 (heatmap / flow_trend): one row per observed trajectory
+    # camera-hop, and the dataset's own time span for the heatmap's `at`
+    # default ("end of data if replay isn't running").
+    link_arrivals: list[LinkArrival]
+    t_min: datetime | None
+    t_max: datetime | None
 
 
 def load_app_state(db_path: str) -> AppState:
@@ -72,12 +80,19 @@ def load_app_state(db_path: str) -> AppState:
         dataset_name = meta.get("dataset_name", {}).get("name", "unknown")
         plate_repair_rate = float(meta.get("plate_repair_rate", {}).get("value", 0.0))
 
-        lite_rows = session.query(EventRow.event_id, EventRow.camera_id, EventRow.timestamp).all()
+        lite_rows = session.query(
+            EventRow.event_id, EventRow.camera_id, EventRow.timestamp, EventRow.trajectory_id
+        ).all()
         events_by_id_lite = {
-            r.event_id: LiteEvent(camera_id=r.camera_id, timestamp=r.timestamp) for r in lite_rows
+            r.event_id: LiteEvent(
+                camera_id=r.camera_id, timestamp=r.timestamp, trajectory_id=r.trajectory_id
+            )
+            for r in lite_rows
         }
         lite_events = list(events_by_id_lite.values())
         n_events = len(lite_events)
+        t_min = min((e.timestamp for e in lite_events), default=None)
+        t_max = max((e.timestamp for e in lite_events), default=None)
 
         traj_rows = session.query(
             TrajectoryRow.trajectory_id,
@@ -119,6 +134,7 @@ def load_app_state(db_path: str) -> AppState:
         corridors_cache = compute_corridors(
             trajectories, events_by_id_lite, city, limit=CORRIDORS_CACHE_LIMIT
         )
+        link_arrivals = compute_link_arrivals(trajectories, events_by_id_lite, city)
 
         active_alerts = session.query(func.count(AlertRow.alert_id)).scalar() or 0
 
@@ -162,4 +178,7 @@ def load_app_state(db_path: str) -> AppState:
         corridors_cache=corridors_cache,
         camera_stats=camera_stats,
         lite_events=lite_events,
+        link_arrivals=link_arrivals,
+        t_min=t_min,
+        t_max=t_max,
     )

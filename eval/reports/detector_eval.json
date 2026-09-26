@@ -1,0 +1,119 @@
+{
+  "weights": "C:\\sutra-data\\ocr\\weights\\best.pt",
+  "conf_threshold": 0.25,
+  "iou_threshold": 0.5,
+  "generated_at": "2026-09-22T11:26:33.592324+00:00",
+  "description": "Detector evaluation, run in steps (see engine/perception/eval_detector.py's module docstring). plate_boxes_2k numbers below (all steps) are on the 178 SCENE images only (1905 already-cropped plate images excluded -- see plate_boxes_2k_filter); video_frames_boxes numbers are on all 160 frames; indian_vehicle_xml on all 1696 images.",
+  "rgb_bug": {
+    "verdict": "confirmed and fixed",
+    "explanation": "ultralytics' model.predict() assumes a raw numpy array is BGR (OpenCV convention) and flips it BGR->RGB internally before the model sees it (ultralytics/data/loaders.py: 'NumPy color inputs are assumed to use OpenCV-compatible BGR order'). engine.perception.detect.PlateDetector previously passed genuine RGB straight through, which ultralytics then wrongly 'corrected' -- feeding the model a channel-swapped image on every call. Verified: flipping PIL's RGB output to BGR (image[..., ::-1]) is byte-identical to cv2.imread's native BGR output for the same file, and produces different (and, per the source comment, correct) detections than passing RGB directly. Fixed inside PlateDetector.detect() itself (flips RGB->BGR before the ultralytics call), so callers (eval_detector.py, video_to_events.py) needed no changes -- both already pass RGB via PIL."
+  },
+  "plate_boxes_2k_filter": {
+    "total_images": 2083,
+    "excluded_precropped": 1905,
+    "kept_scene_images": 178,
+    "rule": "GT box area > 60% of image, OR image area < 40000 px^2. Validated against this dataset's two filename families (used only for validation, not the rule itself): excludes all 1,902 true crops, 0 false negatives; 3 borderline scene photos also excluded (2 tight close-ups, 1 small-but-genuine scene). 00000234.jpg (Odia-script plate product photo, a legitimate rare edge case) is correctly kept."
+  },
+  "steps": {
+    "A_rgb_fix_no_tiling": {
+      "plate_boxes_2k_scenes": {
+        "n_images": 178,
+        "n_gt_boxes": 325,
+        "conf_threshold": 0.25,
+        "iou_threshold": 0.5,
+        "n_pred_boxes_at_conf_threshold": 258,
+        "precision_at_conf_threshold": 0.4418604651162791,
+        "recall_at_conf_threshold": 0.3507692307692308,
+        "map50": 0.3561624844855798
+      },
+      "video_frames_boxes": {
+        "n_images": 160,
+        "n_gt_boxes": 261,
+        "conf_threshold": 0.25,
+        "iou_threshold": 0.5,
+        "n_pred_boxes_at_conf_threshold": 60,
+        "precision_at_conf_threshold": 0.75,
+        "recall_at_conf_threshold": 0.1724137931034483,
+        "map50": 0.26817644204832
+      }
+    },
+    "B_imgsz_1280": {
+      "plate_boxes_2k_scenes": {
+        "n_images": 178,
+        "n_gt_boxes": 325,
+        "conf_threshold": 0.25,
+        "iou_threshold": 0.5,
+        "n_pred_boxes_at_conf_threshold": 156,
+        "precision_at_conf_threshold": 0.3269230769230769,
+        "recall_at_conf_threshold": 0.15692307692307692,
+        "map50": 0.11569352261415536
+      },
+      "video_frames_boxes": {
+        "n_images": 160,
+        "n_gt_boxes": 261,
+        "conf_threshold": 0.25,
+        "iou_threshold": 0.5,
+        "n_pred_boxes_at_conf_threshold": 144,
+        "precision_at_conf_threshold": 0.5,
+        "recall_at_conf_threshold": 0.27586206896551724,
+        "map50": 0.24537785187219244
+      }
+    },
+    "B_imgsz_native": {
+      "plate_boxes_2k_scenes": {
+        "n_images": 178,
+        "n_gt_boxes": 325,
+        "conf_threshold": 0.25,
+        "iou_threshold": 0.5,
+        "n_pred_boxes_at_conf_threshold": 290,
+        "precision_at_conf_threshold": 0.496551724137931,
+        "recall_at_conf_threshold": 0.4430769230769231,
+        "map50": 0.40809767647905215
+      },
+      "video_frames_boxes": {
+        "n_images": 160,
+        "n_gt_boxes": 261,
+        "conf_threshold": 0.25,
+        "iou_threshold": 0.5,
+        "n_pred_boxes_at_conf_threshold": 187,
+        "precision_at_conf_threshold": 0.42780748663101603,
+        "recall_at_conf_threshold": 0.3065134099616858,
+        "map50": 0.2511680717941053
+      }
+    },
+    "C_tiled_default": {
+      "plate_boxes_2k_scenes": {
+        "n_images": 178,
+        "n_gt_boxes": 325,
+        "conf_threshold": 0.25,
+        "iou_threshold": 0.5,
+        "n_pred_boxes_at_conf_threshold": 367,
+        "precision_at_conf_threshold": 0.3569482288828338,
+        "recall_at_conf_threshold": 0.40307692307692305,
+        "map50": 0.3145006825120651
+      },
+      "video_frames_boxes": {
+        "n_images": 160,
+        "n_gt_boxes": 261,
+        "conf_threshold": 0.25,
+        "iou_threshold": 0.5,
+        "n_pred_boxes_at_conf_threshold": 213,
+        "precision_at_conf_threshold": 0.3615023474178404,
+        "recall_at_conf_threshold": 0.2950191570881226,
+        "map50": 0.24473421456885677,
+        "mean_ms_per_image": 1038.0040150927964,
+        "first_call_ms": 943.0871999938972
+      }
+    }
+  },
+  "indian_vehicle_xml_rgb_fixed": {
+    "n_images": 1696,
+    "n_gt_boxes": 1696,
+    "conf_threshold": 0.25,
+    "iou_threshold": 0.5,
+    "n_pred_boxes_at_conf_threshold": 1807,
+    "precision_at_conf_threshold": 0.8876591034864416,
+    "recall_at_conf_threshold": 0.9457547169811321,
+    "map50": 0.9597960148832192
+  }
+}

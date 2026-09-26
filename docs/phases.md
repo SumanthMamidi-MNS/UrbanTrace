@@ -1,85 +1,106 @@
-# Phases — SUTRA (SIH26127)
+# Execution plan — SUTRA (SIH26127)
 
-One week total. Two tracks run in parallel from Day 3: **engine** (builder) and **UI** (frontend), meeting at the API contract frozen on Day 1.
+Living plan, organised by what the PRD requires, not by calendar. Each workstream lists what is done, what remains, and what "done" means. Detailed history is in `decisions.md` (why) and `memory.md` (what was built when).
 
----
-
-## Day 1: Contracts, simulator, ground truth
-- [x] `git init`, feature branch, repo skeleton per `architecture.md` §6
-- [x] Freeze `DetectionEvent` / `Trajectory` / `LinkEvidence` pydantic contracts — **OpenAPI stub NOT done**: explicitly out of scope for this session (API is Day 3); flagged, not forgotten
-- [x] City simulator: road graph, camera placement, vehicle + route generation, ground-truth passage events
-- [x] Corruption model: OCR character-confusion matrix, partial reads, per-camera miss rate, embedding noise — all knob-controlled
-- [x] Sanity: generated 50 cams / 20,000 vehicles / 24h (107,175 events) via the CLI; ground truth round-trips verified by tests
-
-**Success criteria:** `sim.generate(...)` produces a reproducible labelled event stream with tunable difficulty. **Met** — see `docs/decisions.md` "Day 1 build" entries for calibration numbers and tuning notes.
-
-## Day 2: Scoring channels + fusion
-- [x] `plate_lr.py` — noisy-channel LR with per-character posteriors, plate-format prior, edit-aware alignment
-- [x] `kinematic_lr.py` — per camera-pair travel-time priors, time-of-day buckets, `v_max` hard gate, `p_miss` skip penalty
-- [x] `appearance_lr.py` — same/different distance densities, density-ratio LR
-- [x] `fusion.py` — log-odds sum; `calibration/` fits priors on the train split
-- [x] Unit tests per channel with hand-built adversarial pairs
-- [x] Stratified pairwise evaluation (`eval/stratified.py`) — a single scalar AUC over uniformly-sampled negatives is not a valid success criterion here (see below)
-
-**Success criteria (revised — see `docs/decisions.md`, "Day 2b"):** not a single "fused pairwise AUC > 0.97" number. A plate is a near-unique identifier, so uniform/hard-in-time-space negative sampling alone makes plate-only look artificially perfect and hides the one case (clones) the architecture exists for. The real criterion is the **stratum x channel matrix** in `eval/reports/stratified_auc.json`: each channel individually better than chance, plate-only near-perfect on routine traffic, plate-only at-or-below chance on the clone stratum, and fused AUC holding up across every stratum. **Met** — measured on a held-out split (shared city, different seed from train; 4000 train / 6000 held-out vehicles, 20 cameras, clone_fraction=0.02, near_miss_fraction=0.02; degraded stratum measured on a separate higher-noise dataset sharing the same city):
-
-| Stratum (frequency in holdout) | plate AUC | appearance AUC | kinematic AUC | fused AUC |
-|---|---|---|---|---|
-| routine (89.8%) | 1.0000 | 0.9983 | 0.8601 | 1.0000 |
-| clone (4.0%) | 0.5654 | 0.9972 | 1.0000 | 1.0000 |
-| plate-similar (4.1%) | 0.9233 | 0.9979 | 1.0000 | 1.0000 |
-| degraded (2.1%; stress-dataset n=4000) | 0.9963 | 0.9976 | 0.9241 | 0.9992 |
-
-Frequency-weighted composite: plate-only 0.9795, fused 0.99998. Out-of-sample calibration ECE=0.0002 (target <0.05); scoring throughput ~1500 pairs/sec on a laptop CPU. The thesis case is the clone row: plate-only (0.565) is statistically indistinguishable from chance, exactly as it should be since two different vehicles share the identical plate string — and fusion (1.000) still separates them. `tests/test_stratified_auc.py` encodes this as a hard assertion (clone plate AUC < 0.60 AND clone fused AUC > 0.90), not a number to be re-tuned.
-
-Also completed as part of this session: Day 1c fixed a real defect found by measuring against ground truth — 0.44% of read slots had exactly zero posterior probability on the true character (from a Day 1b storage optimisation that over-corrected the OCR confusion model), which would have sent Day 2's plate LR to `-inf` on 4.3% of events. Fixed at the source (`sim/corruption.py`) plus an explicit residual term in the on-disk codec; permanent regression guard added in `tests/test_zero_probability_guard.py`. 73/73 tests passing, ruff clean.
-
-## Day 3: Association, decoding, API  ‖  UI shell starts
-**Engine**
-- [x] `gating.py` + `blocking.py` — **met**: gate cuts 99.61% of pairs (207 candidates/event vs 53,617 naive) at **99.72% true-predecessor recall**; plate blocking engages on 0.25% of events at **0.0% recall cost** (`eval/reports/gating.json`, `blocking.json`)
-- [x] `mincostflow.py` — own SSP solver, agrees with the `networkx` oracle; sliding window with carry-over; full-day partition test (every event in exactly one trajectory) green
-- [x] Vectorised batch scoring — batched-vs-scalar agreement test green (28/28 association + scoring tests)
-- [x] `consensus.py`, `partial_search.py`, `clone_detect.py`, `engine/analytics/*` — 35 tests green
-- [x] Clone realism: overlapping-route clones added. Overlap stratum: plate 0.502, kinematic **0.966** (down from 1.000 on disjoint), appearance 0.999, fused **0.998** (`eval/reports/clone_overlap_auc.json`)
-- [x] Consensus outlier-robustness (ε=0.2 contamination) — run1 GT-grouped: 3 reads 97.88%→98.30%, 4+ reads 99.88%→99.95% (`eval/reports/consensus_accuracy.json`)
-- [x] **Full-city trajectory result** (107,234 events, 20k vehicles, 24h): SUTRA IDF1 **0.926** vs exact-match **0.875**; ID switches **587 vs 19,940**; fragmentation 380 vs 13,055; completeness 0.995 vs 0.877. Solve 8.7 min after exact pruning (19.1M → 392k arcs). Open weakness: SUTRA over-merges (18,483 trajectories for 19,995 vehicles); error analysis in progress. 2h quiet-hours slice: 0.972 vs 0.884.
-- [x] FastAPI + SQLite + replay/WebSocket — 25/25 API tests; routes match `docs/api-contract.md` exactly; `api/openapi.json` exported
-
-**UI (parallel, against the frozen contract + mock data)**
-- [x] All 6 pages (Live, Trajectories + WHY panel + consensus, Search, Analytics, Alerts, Results) — tsc clean, build OK, checked in browser in mock mode
-
-**Success criteria:** end-to-end — simulator events in, reconstructed trajectories out of the API, streaming live to a map.
-
-## Day 4: Evaluation, ablations, real video  ‖  UI features
-**Engine**
-- [ ] `eval/` — IDF1, ID-P/R, ID-switches, fragmentation, plate accuracy, search recall@k, clone P/R
-- [ ] Baselines A/B/C implemented and run head-to-head
-- [ ] Ablation table + stress sweeps (OCR error 0→40%, miss rate 0→30%)
-- [ ] *(Stretch, only if the above is green)* real-video path: YOLO + OCR + Re-ID on 2–3 clips through the same contract
-
-**UI**
-- [ ] Trajectory replay, plate/partial-plate search, analytics dashboards, alerts panel, **WHY panel** (per-link LR breakdown)
-
-**Success criteria:** a results table showing SUTRA beating all three baselines, with the gap widening as noise rises.
-
-## Day 5: Polish, packaging, defence
-- [ ] `docker-compose up` works clean on a fresh machine, offline
-- [ ] Seed a canned demo scenario (a specific vehicle whose plate is misread at 3 of 6 cameras, plus one planted clone)
-- [ ] Demo script: 5 minutes, 6 beats — problem → baseline fails live → SUTRA links it → WHY panel → consensus repairs the plate → clone alert + analytics
-- [ ] README, architecture diagram, results charts, judge Q&A sheet (the hard ones: scale, privacy/DPDP, false-link cost, real-feed integration)
-
-**Success criteria:** anyone on the team can run the demo end-to-end and defend every number in the results table.
+The PRD asks for **four components**. This plan is organised around them, plus the evaluation and packaging that let us defend them.
 
 ---
 
-## Notes
-- If a day runs long, the schedule shifts — don't ship unfinished work just to stay on the calendar.
-- The real-video path is **additive, never blocking**. If Day 4 slips, it is the first thing cut.
-- Day 1's contract freeze is what lets the frontend run in parallel. Do not let it slip.
+## Status at a glance
 
-## Progress log
-*(updated at the end of each session)*
-- **2026-09-15** — Problem analysed, architecture framed, docs moved into `docs/`. Build not yet started.
-- **2026-09-15** — Day 1 built (contracts, city sim, corruption model, tests) and reviewed. Day 1b follow-up: fixed a real appearance-embedding bug (city-scale rank-1 was collapsing to ~15% because per-instance noise wasn't unit-normalised against the class term) with a 3-level hierarchical embedding, and compacted the on-disk event format 13.9x (7378 -> 771 bytes/event) by sparsifying plate posteriors and moving embeddings to a companion float16 `.npy`. See `docs/decisions.md` "Day 1b" for full detail. 32/32 tests passing, ruff clean.
-- **2026-09-15** — Day 1c: found and fixed a zero-probability defect in the on-disk plate posterior codec (see `docs/decisions.md`, "Day 1c") before it could poison Day 2's plate LR. Day 2 built and verified: `engine/scoring/{plate_lr,kinematic_lr,appearance_lr,fusion}.py`, `engine/calibration/{fit_priors,calibrate}.py`, all Day 2 success criteria met (fused AUC 0.9998 > 0.97 target, ECE 0.0002 < 0.05 target, all channels AUC > 0.5). 65/65 tests passing, ruff clean. Next: Day 3 (gating, min-cost flow, consensus decode, clone detect, FastAPI) plus UI shell in parallel.
-- **2026-09-16** — Day 3a/3b engine built and verified (gating, blocking, min-cost flow, windowing, vectorised scoring, consensus, partial search, clone detection, analytics). API contract frozen (`docs/api-contract.md`). UI 5/6 pages built, build currently broken (fix in progress). Remaining: IDF1 + baseline, API, consensus robustness, baselines/ablations/stress, packaging, demo.
+| PRD component | Status |
+|---|---|
+| 1. High-precision OCR module (deep learning, >90% on real Indian plates) | **Built and measured on real plates: 81.0% whole-plate / 94.3% character** — >90% met per character, **not** per whole plate. Detector: held-out video recall 0.51 (small far plates are the main weakness) |
+| 2. Trajectory reconstruction engine (query a plate → chronological path on a GIS map) | Built and verified; full-city IDF1 **0.9914** vs 0.8746. Direction of travel in progress |
+| 3. City traffic analytics dashboard (heatmaps, speeds, densities, OD, congestion, real time) | Partly built — heatmap, speeds and flow trend in progress (contract v2) |
+| 4. Alert system (blacklisted vehicles + suspicious routes, real time) | Partly built — probabilistic watchlist in progress (contract v2) |
+| Evaluation & evidence | Built; kinematic defect fixed; link threshold calibrated on a training day |
+| Packaging & demo | Built; Docker image never actually built |
+
+Last checkpoint commit: `3761df9` (local only, not pushed). Substantial uncommitted work since — next commit after the v2 features land and tests pass.
+
+---
+
+## W1. OCR module — PRD component 1
+
+**Goal:** a deep-learning plate reader that emits **per-character probability distributions** (which the linking engine already consumes via the `DetectionEvent` contract), with recognition accuracy **measured on real Indian plates** and exceeding 90%.
+
+**Done:** real labelled data from the team (1,587 real crops / 904 plates, split by plate); downloads approved; plate detector fine-tuned on Indian scenes; synthetic-pretrained CRNN (baseline, 44.3% real); **fast-plate-ocr fine-tuned: 81.0% whole-plate / 94.3% character / ECE 0.041 on the held-out real test set**; video → `DetectionEvent` adapter smoke-tested into the engine.
+
+**Remaining:**
+- [ ] **Whole-plate accuracy is 81.0%, below the PRD's 90%** (character level 94.3% is above). Next lever: more real training plates — the team is sourcing the ~16k-image "in the wild" dataset.
+- [ ] Small, distant plates in multi-lane footage: detector recall 0.51 on a held-out video.
+- [ ] Wire the fine-tuned fast-plate-ocr model into `video_to_events.py` as the default reader (currently the CRNN path).
+
+**Done means:** measured whole-plate accuracy >90% on a held-out, human-verified real Indian plate set, reported with its size and conditions; a sample clip runs end to end into the console.
+
+## W2. Trajectory reconstruction — PRD component 2
+
+**Done:** probabilistic three-channel linking, global min-cost-flow association with exact pruning, consensus plate repair, partial-plate search, trajectory detail on the map with timestamps and cameras, WHY panel, kinematic null fixed, link threshold calibrated on a training day. Full-city IDF1 **0.9914** vs 0.8746 for exact matching.
+
+**Remaining:**
+- [x] Kinematic null fixed — ablation: plate+kinematic 0.977 > plate-only 0.968; all three 0.992 is the best row.
+- [ ] Show direction of travel on the trajectory map (the PRD names "direction" explicitly).
+
+**Done means:** in the ablation, every added channel improves or holds IDF1, and "all three" is the best row.
+
+## W3. Traffic analytics dashboard — PRD component 3
+
+**Done:** OD matrix (5 zones), volumes per camera over time, corridor travel times with congestion index, KPI summary.
+
+**Remaining:**
+- [ ] **Traffic density heatmap** on the map, including a **live** mode driven by the replay stream.
+- [ ] **Average vehicle speeds** per corridor and per camera, from trajectory link distances and times.
+- [ ] Traffic-flow trend view (volumes over time across the network) and congestion bottleneck ranking surfaced on the dashboard.
+
+**Done means:** every analytic named in the PRD — heatmap, average speeds, route densities, OD, congestion bottlenecks, flow trends — is visible in the console from real API data.
+
+## W4. Alert system — PRD component 4
+
+**Done:** cloned-plate, impossible-travel and looping-route alerts, streamed live.
+
+**Remaining:**
+- [ ] **Blacklist / watchlist:** operators add plates (full or partial with `?`); matching uses the plate posterior, so a watchlisted vehicle is still caught when its plate is misread. Alerts fire in real time as reads arrive, with match confidence.
+- [ ] Watchlist management in the console (add, remove, list, see hits).
+
+**Done means:** a watchlisted plate raises a real-time alert during replay, including on a read with a misread character.
+
+## W5. Evaluation & evidence
+
+**Done:** stratified pairwise AUC, full-city IDF1 vs exact matching, stress sweep (our lead grows from 0.094 to 0.427 as per-read plate accuracy falls from 88.8% to 50%), baselines A/B/C, ablation, error analysis, consensus accuracy, gating and blocking reports, 255 tests.
+
+**Remaining:**
+- [x] Ablation and full city rerun after the kinematic fix.
+- [x] OCR accuracy reports (synthetic, real progression, fast-plate-ocr) and detector reports.
+- [ ] Results page shows ablation, baselines and stress sweep.
+
+## W6. Packaging & demo
+
+**Done:** one-command local serve (verified), docker-compose + Dockerfile, Makefile and `make.ps1`, README with results, demo script, judge Q&A.
+
+**Remaining:**
+- [ ] Actually build and run the Docker image on a machine with a working Docker daemon.
+- [ ] Refresh the demo script and README for W1–W4 additions.
+- [ ] Final full test pass, lint, commit.
+
+---
+
+## Order of work
+
+1. W2 kinematic fix (correctness; affects every headline number)
+2. W4 watchlist alerts and W3 heatmap + speeds (PRD gaps that need no downloads)
+3. W1 OCR (as soon as the user decides on data and approves downloads)
+4. W5 refresh, W6 refresh, final commit
+
+## Working rules for this project
+
+- Nothing is tuned on the evaluation set (run1, seed 42); training and tuning use separate seeds.
+- The SQLite database lives outside OneDrive (`%LOCALAPPDATA%\sutra\sutra.db`).
+
+## Progress log (2026-09-25)
+
+- Kinematic channel fixed (empirical null); link threshold β=2 calibrated on a full-size training day, transferred to the test day: full-city IDF1 **0.9914** vs exact-match 0.8746.
+- OCR: synthetic renderer hardened (visibility guarantee, partial occlusion, HSRP features); team-supplied real dataset organised and split by plate; our CRNN reached 44.3% on real plates and plateaued; **fast-plate-ocr fine-tuned on real plates: 81.0% whole-plate / 94.3% character on the held-out real test set.**
+- Detector: RGB bug fixed; crop-images excluded from evaluation; fine-tuned detector on held-out video recall 0.333 → 0.506.
+- Contract v2 written (watchlist, heatmap, speeds, flow trend, direction); API and UI built against it in parallel.
+- Remaining: land contract v2 (W2 direction, W3, W4), refresh README/Results/demo, full test pass, commit. Optional: the 16k-image in-the-wild dataset for OCR, if the team obtains it.

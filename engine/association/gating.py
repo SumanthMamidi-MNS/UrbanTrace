@@ -68,6 +68,25 @@ DEFAULT_MISS_WIDEN_FACTOR = 1.3
 # close camera pairs -- never let it go negative.
 MIN_DT_FLOOR_S = 0.0
 
+# Hard multiplicative floor on the gate's upper bound, expressed as a
+# multiple of the pair's FREE-FLOW travel time (from
+# KinematicModel.shortest_path_info, i.e. at the posted speed limit, no
+# congestion). The gate is a recall device: architecture.md §7 says it may
+# exclude only what is physically impossible, and congestion slowness is
+# weighed as evidence downstream by the kinematic LR, not excluded here.
+# exp(mu + z*sigma) alone tracks the FITTED distribution's spread, which on
+# a congested day is only ~1.4-1.6x typical travel time near a bottleneck --
+# nowhere near enough. At BPR alpha=0.15, beta=4, a volume/capacity ratio of
+# 2 already gives a 3.4x travel-time multiplier over free flow, and this
+# project's own calibrated bottleneck links run vehicles at ~0.23-0.42x
+# free-flow speed (i.e. up to ~4.3x the free-flow time) at peak load (lead's
+# measurement, run2 config). CONGESTION_TAIL_FACTOR=4.0 sits just under that
+# worst case with a small margin, so a legitimately-jammed true predecessor
+# is never excluded by the upper bound alone. This does NOT touch the lower
+# (v_max / physically-impossible) bound -- clone detection depends on that
+# staying tight.
+CONGESTION_TAIL_FACTOR = 4.0
+
 
 @dataclass(frozen=True)
 class GateWindow:
@@ -102,6 +121,7 @@ def _pair_window(
     tod: str,
     z: float,
     miss_widen_factor: float,
+    congestion_tail_factor: float = CONGESTION_TAIL_FACTOR,
 ) -> GateWindow | None:
     """The gate window for camera_i -> camera_j given the LATER event's
     time-of-day bucket `tod`, widened further if the shortest path skips
@@ -109,11 +129,21 @@ def _pair_window(
     own lower edge (`t_j - dt_max`) would land in, so a predecessor just
     across a tod boundary is never dropped -- without paying for a full
     union across all six buckets (see module docstring). Returns None if
-    cam_j is unreachable from cam_i."""
+    cam_j is unreachable from cam_i.
+
+    Finally, the upper bound is floored at `congestion_tail_factor` times
+    the pair's free-flow travel time (`shortest_path_info`'s full cam_i ->
+    cam_j path, which already covers the skipped-camera case -- there is no
+    separate "skipped path" free-flow time to look up). This is a hard
+    floor, not a widening on top of the fitted/tod-union bound above: the
+    gate must never exclude a merely-congested true predecessor just
+    because the fitted distribution's own spread happens to be narrow (see
+    module-level `CONGESTION_TAIL_FACTOR` docstring)."""
     shortest = model.shortest_path_info(cam_i, cam_j)
     if shortest is None:
         return None
     skipped = shortest[2]
+    free_flow_time_s = shortest[1]
     effective_z = z * miss_widen_factor if skipped else z
 
     log_lo, log_hi = _bucket_window(model, cam_i, cam_j, tod, effective_z)
@@ -127,6 +157,9 @@ def _pair_window(
         b_lo, b_hi = _bucket_window(model, cam_i, cam_j, boundary_tod, effective_z)
         log_lo = min(log_lo, b_lo)
         log_hi = max(log_hi, b_hi)
+
+    if free_flow_time_s > 0:
+        log_hi = max(log_hi, math.log(free_flow_time_s * congestion_tail_factor))
 
     dt_min_s = max(math.exp(log_lo), MIN_DT_FLOOR_S)
     dt_max_s = math.exp(log_hi)
@@ -173,6 +206,7 @@ class Gate:
     model: KinematicModel
     z: float = GATE_Z_SCORE
     miss_widen_factor: float = DEFAULT_MISS_WIDEN_FACTOR
+    congestion_tail_factor: float = CONGESTION_TAIL_FACTOR
     _window_cache: dict[tuple[str, str, str], GateWindow | None] = field(
         default_factory=dict, init=False, repr=False
     )
@@ -181,7 +215,13 @@ class Gate:
         key = (cam_i, cam_j, tod)
         if key not in self._window_cache:
             self._window_cache[key] = _pair_window(
-                self.model, cam_i, cam_j, tod, self.z, self.miss_widen_factor
+                self.model,
+                cam_i,
+                cam_j,
+                tod,
+                self.z,
+                self.miss_widen_factor,
+                self.congestion_tail_factor,
             )
         return self._window_cache[key]
 
@@ -291,6 +331,7 @@ __all__ = [
     "GateWindow",
     "RecallResult",
     "GATE_Z_SCORE",
+    "CONGESTION_TAIL_FACTOR",
     "gate_candidates",
     "true_predecessor_recall",
 ]

@@ -3,6 +3,8 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import { useEval } from '../api/hooks'
 import { cx, EmptyState, ErrorState, Loading, Panel } from '../components/ui'
 import { fmtNum, fmtPct, titleCase } from '../lib/format'
+import { CalibrationSection, DetectorSection, LinkingSection, StressSection } from './results/EngineSections'
+import { OcrSection } from './results/OcrSection'
 
 // Reports are still being produced: every accessor is defensive and every section degrades to an empty state.
 
@@ -290,7 +292,52 @@ function GenericReport({ name, r }: { name: string; r: unknown }) {
 
 // ------------------------------------------------------------------ page
 
-const KNOWN = new Set(['stratified_auc', 'clone_overlap_auc', 'appearance_scaling', 'gating', 'blocking'])
+const KNOWN = new Set([
+  'stratified_auc',
+  'clone_overlap_auc',
+  'appearance_scaling',
+  'gating',
+  'blocking',
+  'ocr_real_fpo_finetuned',
+  'ocr_real_fpo_zeroshot_postfix',
+  'ocr_real_long',
+  'ocr_real_synthonly',
+  'ocr_synthetic',
+  'detector_eval',
+  'detector_holdout_video',
+  'stress_sweep',
+  'baselines',
+  'ablation',
+  'link_bias_calibration',
+  'trajectory_metrics',
+])
+
+const SECTIONS = [
+  { id: 'res-ocr', label: 'OCR' },
+  { id: 'res-detector', label: 'Detector' },
+  { id: 'res-linking', label: 'Linking' },
+  { id: 'res-stress', label: 'Stress test' },
+  { id: 'res-calibration', label: 'Calibration' },
+  { id: 'res-evidence', label: 'Evidence channels' },
+  { id: 'res-other', label: 'Other reports' },
+]
+
+function SectionHeading({ id, title, sub }: { id: string; title: string; sub?: string }) {
+  return (
+    <div id={id} className="scroll-mt-14 pt-2">
+      <h2 className="text-[13px] font-semibold tracking-[0.06em] text-fg-strong uppercase">{title}</h2>
+      {sub && <p className="text-xs text-fg-dim">{sub}</p>}
+    </div>
+  )
+}
+
+function NotYet({ title }: { title: string }) {
+  return (
+    <Panel title={title}>
+      <EmptyState title="Report not produced yet" className="h-24" />
+    </Panel>
+  )
+}
 
 export function ResultsPage() {
   const q = useEval()
@@ -298,8 +345,9 @@ export function ResultsPage() {
   if (q.isError) return <ErrorState error={q.error} />
   const reports = isObj(q.data) && isObj(q.data.reports) ? q.data.reports : {}
   const get = (k: string) => (isObj(reports[k]) ? (reports[k] as Obj) : undefined)
-  const baselineKeys = Object.keys(reports).filter((k) => /baseline|trajectory_metrics/.test(k))
-  const others = Object.keys(reports).filter((k) => !KNOWN.has(k) && !baselineKeys.includes(k))
+  const others = Object.keys(reports)
+    .filter((k) => !KNOWN.has(k))
+    .sort()
 
   if (Object.keys(reports).length === 0) {
     return <EmptyState title="No evaluation reports yet">Run the eval scripts; reports in eval/reports/*.json appear here automatically.</EmptyState>
@@ -308,27 +356,55 @@ export function ResultsPage() {
   const strat = get('stratified_auc')
   const clone = get('clone_overlap_auc')
   const scaling = get('appearance_scaling')
+  const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
 
   return (
-    <div className="h-full overflow-y-auto p-3">
-      <div className="flex flex-col gap-3">
-        {baselineKeys.length ? (
-          baselineKeys.map((k) => <GenericReport key={k} name={k} r={reports[k]} />)
-        ) : (
-          <Panel title="Baselines vs SUTRA">
-            <EmptyState title="Report not produced yet" className="h-24">
-              Exact-match, fuzzy and fuzzy + time-gate baselines (IDF1, ID switches, fragmentation) will render here once the engine writes them.
-            </EmptyState>
-          </Panel>
-        )}
-        {strat ? <StratifiedSection r={strat} /> : <Panel title="Stratified pairwise AUC"><EmptyState title="Report not produced yet" className="h-24" /></Panel>}
+    <div className="h-full overflow-y-auto">
+      <nav aria-label="Results sections" className="sticky top-0 z-10 flex items-center gap-1 overflow-x-auto border-b border-ink-700 bg-ink-900/95 px-3 py-1.5 backdrop-blur-sm">
+        <span className="mr-2 text-[10px] font-semibold tracking-[0.1em] whitespace-nowrap text-fg-dim uppercase">Measured results</span>
+        {SECTIONS.map((s) => (
+          <button key={s.id} type="button" onClick={() => jump(s.id)} className="rounded-sm px-2 py-1 text-xs whitespace-nowrap text-fg-muted hover:bg-ink-800 hover:text-fg">
+            {s.label}
+          </button>
+        ))}
+        <span className="ml-auto hidden pl-3 text-[10px] whitespace-nowrap text-fg-dim xl:inline">every number below is read from eval/reports/*.json</span>
+      </nav>
+      <div className="flex flex-col gap-3 p-3">
+        <SectionHeading id="res-ocr" title="1 · Plate OCR" sub="PRD component 1: recognition accuracy on real Indian plates." />
+        <OcrSection reports={reports} />
+
+        <SectionHeading id="res-detector" title="2 · Plate detection" />
+        {get('detector_holdout_video') || get('detector_eval') ? <DetectorSection holdout={get('detector_holdout_video')} evalR={get('detector_eval')} /> : <NotYet title="Plate detector" />}
+
+        <SectionHeading id="res-linking" title="3 · Trajectory linking" sub="PRD component 2: does linking reads into trajectories beat plate matching?" />
+        {get('trajectory_metrics') || get('baselines') || get('ablation') ? <LinkingSection traj={get('trajectory_metrics')} baselines={get('baselines')} ablation={get('ablation')} /> : <NotYet title="Baselines vs SUTRA" />}
+
+        <SectionHeading id="res-stress" title="4 · Stress test" />
+        {get('stress_sweep') ? <StressSection r={get('stress_sweep')} /> : <NotYet title="Stress sweep" />}
+
+        <SectionHeading id="res-calibration" title="5 · Calibration" />
+        {get('link_bias_calibration') ? <CalibrationSection r={get('link_bias_calibration')} /> : <NotYet title="Link-bias calibration" />}
+
+        <SectionHeading id="res-evidence" title="6 · Evidence channels" sub="Why fusing plate, appearance and travel time matters, pair by pair." />
+        {strat ? <StratifiedSection r={strat} /> : <NotYet title="Stratified pairwise AUC" />}
         <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
           {clone && <CloneOverlapSection r={clone} />}
           {scaling && <AppearanceScalingSection r={scaling} />}
         </div>
         <GatingSection gating={get('gating')} blocking={get('blocking')} />
+
+        <SectionHeading id="res-other" title="7 · Other and superseded reports" sub="Raw view of every other report the engine has written, including earlier runs kept for the record." />
+        {others.length === 0 && <p className="text-xs text-fg-dim">None.</p>}
         {others.map((k) => (
-          <GenericReport key={k} name={k} r={reports[k]} />
+          <details key={k} className="rounded border border-ink-700 bg-ink-850">
+            <summary className="flex cursor-pointer items-center gap-3 px-3 py-2 text-xs text-fg-muted select-none hover:text-fg">
+              <span className="shrink-0 font-mono">{k}</span>
+              <span className="truncate text-[11px] text-fg-dim">{str(get(k)?.description)}</span>
+            </summary>
+            <div className="border-t border-ink-700">
+              <GenericReport name={k} r={reports[k]} />
+            </div>
+          </details>
         ))}
       </div>
     </div>

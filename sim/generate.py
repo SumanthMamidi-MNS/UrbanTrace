@@ -17,6 +17,7 @@ from engine.contracts.city import CityConfig
 from engine.contracts.codec import encode_event_compact
 from engine.contracts.events import DetectionEvent
 from sim.city import generate_city
+from sim.congestion import CongestionConfig, congestion_config_to_dict
 from sim.corruption import CorruptionConfig, Corruptor
 from sim.vehicles import EMBEDDING_DIM, Journey, Vehicle, generate_vehicles_and_journeys
 
@@ -43,6 +44,8 @@ def generate_dataset_with_city(
     corruption_config: CorruptionConfig | None = None,
     near_miss_fraction: float = 0.0,
     clone_route_overlap: float = 0.5,
+    congestion: bool = False,
+    congestion_config: CongestionConfig | None = None,
 ) -> GeneratedDataset:
     """Like `generate_dataset`, but reuses an already-built city instead of
     deriving one from `seed`. This is what lets a train/held-out split share
@@ -63,6 +66,8 @@ def generate_dataset_with_city(
         clone_fraction=cfg.clone_fraction,
         near_miss_fraction=near_miss_fraction,
         clone_route_overlap=clone_route_overlap,
+        congestion=congestion,
+        congestion_config=congestion_config,
     )
     vehicles_by_id = {v.gt_vehicle_id: v for v in vehicle_list}
 
@@ -89,9 +94,16 @@ def generate_dataset(
     corruption_config: CorruptionConfig | None = None,
     near_miss_fraction: float = 0.0,
     clone_route_overlap: float = 0.5,
+    congestion: bool = False,
+    congestion_config: CongestionConfig | None = None,
 ) -> GeneratedDataset:
     """Run the full pipeline (city -> vehicles/journeys -> corrupted events)
-    and return everything in memory. Deterministic given `seed`."""
+    and return everything in memory. Deterministic given `seed`.
+
+    `congestion` defaults to False here (and in
+    `generate_vehicles_and_journeys`) so every existing caller/test keeps
+    reproducing pre-existing output byte-for-byte; the CLI below defaults it
+    to True for newly-generated datasets (see docs/decisions.md)."""
     city = generate_city(n_cameras=n_cameras, seed=seed)
     return generate_dataset_with_city(
         city=city,
@@ -102,6 +114,8 @@ def generate_dataset(
         corruption_config=corruption_config,
         near_miss_fraction=near_miss_fraction,
         clone_route_overlap=clone_route_overlap,
+        congestion=congestion,
+        congestion_config=congestion_config,
     )
 
 
@@ -170,12 +184,22 @@ def main(
     clone_fraction: float = typer.Option(
         0.02, help="Fraction of vehicles that are plate clones."
     ),
+    congestion: bool = typer.Option(
+        True,
+        help=(
+            "Density-dependent (BPR) link travel times, on by default for new "
+            "datasets. --no-congestion reproduces the pre-congestion free-flow "
+            "behaviour byte-for-byte."
+        ),
+    ),
 ) -> None:
     console.print(f"[bold]Generating city[/bold]: {cameras} cameras, seed={seed}")
     console.print(f"[bold]Generating vehicles + journeys[/bold]: {vehicles} vehicles, {hours}h")
+    console.print(f"[bold]Congestion[/bold]: {'on (BPR)' if congestion else 'off (free flow)'}")
     console.print("[bold]Corrupting passages into DetectionEvents[/bold]")
 
     corruption_config = CorruptionConfig(clone_fraction=clone_fraction)
+    congestion_config = CongestionConfig(enabled=congestion) if congestion else None
     dataset = generate_dataset(
         n_cameras=cameras,
         n_vehicles=vehicles,
@@ -183,6 +207,8 @@ def main(
         seed=seed,
         clone_fraction=clone_fraction,
         corruption_config=corruption_config,
+        congestion=congestion,
+        congestion_config=congestion_config,
     )
 
     run_config = {
@@ -192,6 +218,10 @@ def main(
         "seed": seed,
         "clone_fraction": clone_fraction,
         "corruption": corruption_config.__dict__,
+        "congestion": congestion,
+        "congestion_config": congestion_config_to_dict(congestion_config)
+        if congestion_config is not None
+        else None,
     }
     write_dataset(dataset, out, run_config)
 

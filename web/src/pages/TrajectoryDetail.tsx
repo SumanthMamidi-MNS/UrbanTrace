@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAlerts, useCity, useTrajectory } from '../api/hooks'
 import type { City, LinkEvidence, TrajectoryDetail as TDetail } from '../api/types'
-import { CityMap, type MapLabel, type MapLine, type MapPoint } from '../components/CityMap'
+import { CityMap, type MapArrow, type MapLabel, type MapLine, type MapPoint } from '../components/CityMap'
 import { ConsensusPanel } from '../components/ConsensusPanel'
 import { IconPause, IconPlay, IconReset } from '../components/icons'
-import { Button, cx, EmptyState, ErrorState, Loading, Panel, Plate, SeverityBadge, Stat, Swatch, alertTypeLabel } from '../components/ui'
+import { Button, cx, EmptyState, ErrorState, HeadingArrow, Loading, Panel, Plate, SeverityBadge, Stat, Swatch, alertTypeLabel } from '../components/ui'
+import { compassLabel, compassWord } from '../lib/direction'
 import { ReadChars, WhyPanel } from '../components/WhyPanel'
 import { fmtDateTime, fmtDuration, fmtLogOdds, fmtPct, fmtTime } from '../lib/format'
 import { getRouter, sliceLine, type LngLat } from '../lib/geo'
@@ -134,7 +135,8 @@ export function TrajectoryDetailView({ id }: { id: string }) {
     const lines: MapLine[] = []
     const points: MapPoint[] = []
     const labels: MapLabel[] = []
-    if (!t || !geo.segments) return { lines, points, labels }
+    const arrows: MapArrow[] = []
+    if (!t || !geo.segments) return { lines, points, labels, arrows }
     geo.segments.forEach((s, i) => lines.push({ id: `seg-${i}`, coords: s, color: '#1d6f7c', width: 3, opacity: 0.7 }))
     lines.push({ id: 'revealed', coords: geo.revealed, color: '#3cc4d8', width: 4, opacity: 1 })
     const sel = geo.segments[selected]
@@ -148,7 +150,11 @@ export function TrajectoryDetailView({ id }: { id: string }) {
     const last = t.path[t.path.length - 1]
     if (first) labels.push({ id: 'start', lngLat: [first.lon, first.lat], text: `START ${fmtTime(first.timestamp, false)}`, tone: 'neutral' })
     if (last && t.path.length > 1) labels.push({ id: 'end', lngLat: [last.lon, last.lat], text: `END ${fmtTime(last.timestamp, false)}`, tone: 'accent' })
-    return { lines, points, labels }
+    // v2 direction of travel: one arrow leaving each camera, pointing along heading_deg to the next one.
+    t.path.forEach((p) => {
+      if (typeof p.heading_deg === 'number' && Number.isFinite(p.heading_deg)) arrows.push({ id: `arr-${p.event_id}`, lngLat: [p.lon, p.lat], heading: p.heading_deg })
+    })
+    return { lines, points, labels, arrows }
   }, [t, geo, selected, replay.progress])
 
   const fitCoords = useMemo(() => (t ? t.path.map((p) => [p.lon, p.lat] as LngLat) : undefined), [t])
@@ -159,6 +165,9 @@ export function TrajectoryDetailView({ id }: { id: string }) {
 
   const related = (alerts.data ?? []).filter((a) => a.trajectory_ids.includes(t.trajectory_id))
   const durationS = (Date.parse(t.end_time) - Date.parse(t.start_time)) / 1000
+  const overall = typeof t.overall_heading_deg === 'number' && Number.isFinite(t.overall_heading_deg) ? t.overall_heading_deg : null
+  // Prefer the server's label; derive it from the bearing only if an older API omits it.
+  const dirLabel = t.direction_label ?? compassLabel(overall)
   const repaired = t.consensus.single_read_plates.filter((r) => mismatchSlots(r, t.decoded_plate).length > 0).length
   const selectLink = (i: number) => {
     setSelected(i)
@@ -181,6 +190,20 @@ export function TrajectoryDetailView({ id }: { id: string }) {
         <Stat label="Plate confidence" value={fmtPct(t.plate_confidence, 2)} />
         <Stat label="Window" value={`${fmtTime(t.start_time)} – ${fmtTime(t.end_time)}`} sub={fmtDateTime(t.start_time).slice(0, 10)} />
         <Stat label="Duration" value={fmtDuration(durationS)} />
+        <Stat
+          label="Direction"
+          value={
+            dirLabel ? (
+              <span className="inline-flex items-center gap-1.5" title={overall !== null ? `Overall bearing ${Math.round(overall)}°, first to last camera` : undefined}>
+                {overall !== null && <HeadingArrow deg={overall} size={13} className="text-accent" />}
+                Heading {dirLabel}
+              </span>
+            ) : (
+              '—'
+            )
+          }
+          sub={dirLabel ? `${compassWord(dirLabel)}${overall !== null ? ` · ${String(Math.round(overall)).padStart(3, '0')}°` : ''}` : 'needs two cameras'}
+        />
         <Stat label="Sightings" value={`${t.n_events} reads · ${t.links.length} links`} />
         <Stat label="Reads repaired" value={<span className={repaired ? 'text-caution' : undefined}>{repaired} of {t.consensus.single_read_plates.length}</span>} />
         {related.length > 0 && (
@@ -220,6 +243,7 @@ export function TrajectoryDetailView({ id }: { id: string }) {
               lines={mapLayers.lines}
               points={mapLayers.points}
               labels={mapLayers.labels}
+              arrows={mapLayers.arrows}
               fit={{ key: t.trajectory_id, coords: fitCoords, padding: 50, maxZoom: 15 }}
               ariaLabel={`Path of ${t.decoded_plate} across ${t.n_events} cameras`}
             />
@@ -261,6 +285,12 @@ export function TrajectoryDetailView({ id }: { id: string }) {
                       className={cx('ml-[20px] flex w-[calc(100%-20px)] items-center gap-2 border-l-2 py-1 pr-3 pl-4 text-left text-[11px] transition-colors', selected === i ? 'border-accent bg-accent-faint/60 text-fg-strong' : 'border-ink-600 text-fg-dim hover:bg-ink-800 hover:text-fg')}
                     >
                       <span className="num font-mono">+{fmtDuration(link.delta_t_s)}</span>
+                      {typeof t.path[i]?.heading_deg === 'number' && (
+                        <span className="inline-flex items-center gap-0.5" title={`Heading ${Math.round(t.path[i].heading_deg as number)}° to the next camera`}>
+                          <HeadingArrow deg={t.path[i].heading_deg as number} size={10} />
+                          {compassLabel(t.path[i].heading_deg)}
+                        </span>
+                      )}
                       {link.skipped_cameras.length > 0 && <span>{link.skipped_cameras.length} missed</span>}
                       <span className="ml-auto">
                         log-odds <span className="num font-mono text-fg">{fmtLogOdds(link.total_log_odds, 1)}</span>

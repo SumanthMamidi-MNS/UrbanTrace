@@ -1,15 +1,42 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAlerts, useCameras, useCity } from '../api/hooks'
-import type { Alert } from '../api/types'
+import type { Alert, HeatMetric } from '../api/types'
 import { CityMap, type MapLine, type MapPoint } from '../components/CityMap'
-import { alertTypeLabel, cx, EmptyState, ErrorState, Loading, Plate, SeverityBadge, Swatch } from '../components/ui'
+import { HeatControls, HeatLegend } from '../components/HeatOverlay'
+import { AlertTypeTag, cx, EmptyState, ErrorState, Loading, Plate, SeverityBadge, Swatch } from '../components/ui'
 import { useLive } from '../hooks/liveStore'
+import { toMapHeat, useHeat, type HeatSource } from '../hooks/useHeat'
 import { fmtNum, fmtPct, fmtTime } from '../lib/format'
 import { getRouter } from '../lib/geo'
 import { formatPlate } from '../lib/plate'
 
 const FADE_MS = 120_000
+const HEAT_WINDOW_MIN = 15
+
+/** Per-viewer convenience only: remembers the heatmap controls. Storage may be unavailable. */
+function usePersisted<T extends string | boolean>(key: string, initial: T, valid: (v: unknown) => v is T): [T, (v: T) => void] {
+  const [v, setV] = useState<T>(() => {
+    try {
+      const raw = localStorage.getItem(key)
+      const parsed: unknown = raw === null ? null : JSON.parse(raw)
+      return valid(parsed) ? parsed : initial
+    } catch {
+      return initial
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(v))
+    } catch {
+      /* storage blocked: keep in memory */
+    }
+  }, [key, v])
+  return [v, setV]
+}
+const isBool = (x: unknown): x is boolean => typeof x === 'boolean'
+const isMetric = (x: unknown): x is HeatMetric => x === 'density' || x === 'speed'
+const isSource = (x: unknown): x is HeatSource => x === 'live' || x === 'snapshot'
 
 function AlertFeed() {
   const hist = useAlerts({ limit: 30 })
@@ -39,7 +66,8 @@ function AlertFeed() {
               <Link to={`/alerts/${a.alert_id}`} className="block px-3 py-2 hover:bg-ink-800">
                 <div className="flex items-center gap-2">
                   <SeverityBadge severity={a.severity} />
-                  <span className={cx('text-xs font-semibold', a.type === 'anomaly' ? 'text-fg' : 'text-alert')}>{alertTypeLabel(a.type)}</span>
+                  <AlertTypeTag type={a.type} />
+                  {a.type === 'watchlist' && a.evidence.matched_on === 'trajectory_consensus' && <span className="text-[10px] font-medium text-fg-muted">via consensus</span>}
                   <span className="num ml-auto font-mono text-[11px] text-fg-dim">{fmtTime(a.created_at)}</span>
                 </div>
                 <div className="mt-1 flex items-start gap-2">
@@ -111,6 +139,11 @@ export function LivePage() {
   const liveTrajs = useLive((s) => s.trajectories)
   const readsSinceOpen = useLive((s) => s.eventsSinceLoad)
   const navigate = useNavigate()
+  const [heatOn, setHeatOn] = usePersisted('sutra.heat.on', false, isBool)
+  const [metric, setMetric] = usePersisted<HeatMetric>('sutra.heat.metric', 'density', isMetric)
+  const [source, setSource] = usePersisted<HeatSource>('sutra.heat.source', 'live', isSource)
+  const heat = useHeat(city.data, { enabled: heatOn, metric, source, windowMin: HEAT_WINDOW_MIN })
+  const mapHeat = useMemo(() => toMapHeat(heat), [heat])
 
   const { lines, points } = useMemo(() => {
     if (!city.data) return { lines: [] as MapLine[], points: [] as MapPoint[] }
@@ -123,12 +156,14 @@ export function LivePage() {
       const age = Math.min(1, (now - t.updatedAt) / FADE_MS)
       const coords = router.line(t.summary.camera_sequence)
       const alert = t.summary.has_alert
-      lines.push({ id: t.summary.trajectory_id, coords, color: alert ? '#ef4444' : '#3cc4d8', width: age < 0.05 ? 3.2 : 2.2, opacity: 0.95 - 0.8 * age })
+      // With the heatmap on, individual tracks recede so the macro picture reads; alert tracks stay visible.
+      const recede = heatOn && !alert ? 0.35 : 1
+      lines.push({ id: t.summary.trajectory_id, coords, color: alert ? '#ef4444' : '#3cc4d8', width: (age < 0.05 ? 3.2 : 2.2) * (heatOn && !alert ? 0.6 : 1), opacity: (0.95 - 0.8 * age) * recede })
       const head = coords[coords.length - 1]
       if (head && age < 0.5) points.push({ id: t.summary.trajectory_id, lngLat: head, color: alert ? '#ef4444' : '#e8fbff', radius: 3.5, strokeWidth: 1.5 })
     }
     return { lines, points }
-  }, [city.data, liveTrajs])
+  }, [city.data, liveTrajs, heatOn])
 
   const activeTracks = liveTrajs.filter((t) => Date.now() - t.updatedAt < FADE_MS).length
 
@@ -144,6 +179,7 @@ export function LivePage() {
             lines={lines}
             points={points}
             livePulses
+            heat={mapHeat}
             fit={{ key: 'city', padding: 40 }}
             onCameraClick={(id) => navigate(`/trajectories?camera_id=${encodeURIComponent(id)}`)}
             ariaLabel="Live city map: cameras sized by reads in the last hour, recent trajectories drawn along roads"
@@ -162,6 +198,15 @@ export function LivePage() {
             </div>
           ))}
         </div>
+        {/* overlay: heatmap controls + legend */}
+        <div className="pointer-events-none absolute top-3 right-3 flex flex-col items-end gap-2">
+          <HeatControls on={heatOn} onToggle={setHeatOn} metric={metric} onMetric={setMetric} source={source} onSource={setSource} />
+        </div>
+        {heat && (
+          <div className="absolute right-3 bottom-3">
+            <HeatLegend view={heat} />
+          </div>
+        )}
         {/* overlay: legend */}
         <div className="pointer-events-none absolute bottom-3 left-3 rounded-sm border border-ink-700 bg-ink-950/85 px-2.5 py-2 text-[11px] text-fg-muted backdrop-blur-sm">
           <div className="flex items-center gap-2">

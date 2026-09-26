@@ -1,0 +1,144 @@
+{
+  "n_samples": 510,
+  "whole_plate_accuracy": 0.49411764705882355,
+  "char_accuracy": 0.7496078431372548,
+  "confidence_ece": 0.046505489332540284,
+  "per_condition": {
+    "State-wise_OLX": {
+      "n_samples": 170,
+      "whole_plate_accuracy": 0.32941176470588235,
+      "char_accuracy": 0.7005882352941176
+    },
+    "google_images": {
+      "n_samples": 148,
+      "whole_plate_accuracy": 0.5540540540540541,
+      "char_accuracy": 0.7763513513513512
+    },
+    "video_images": {
+      "n_samples": 192,
+      "whole_plate_accuracy": 0.59375,
+      "char_accuracy": 0.7723958333333333
+    }
+  },
+  "group_by_plate": {
+    "n_unique_plates": 276,
+    "whole_plate_accuracy_per_plate_mean": 0.3831884516860624,
+    "char_accuracy_per_plate_mean": 0.7040258294258385,
+    "images_per_plate_min": 1,
+    "images_per_plate_max": 34,
+    "images_per_plate_mean": 1.8478260869565217
+  },
+  "error_sample": [
+    {
+      "image_path": "images/test_000001.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AN01H_0908",
+      "prediction": "AN01H__090",
+      "confidence": 0.6825834095547252
+    },
+    {
+      "image_path": "images/test_000002.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AP39GR3492",
+      "prediction": "AP39AA8449",
+      "confidence": 0.00011495291849635957
+    },
+    {
+      "image_path": "images/test_000003.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AP31TP2282",
+      "prediction": "AP31AA_288",
+      "confidence": 4.316429284701576e-05
+    },
+    {
+      "image_path": "images/test_000004.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AP31AT5064",
+      "prediction": "AP31AT_506",
+      "confidence": 0.5478327955945885
+    },
+    {
+      "image_path": "images/test_000007.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AP05CG6320",
+      "prediction": "AP58G_6320",
+      "confidence": 0.2125788285243089
+    },
+    {
+      "image_path": "images/test_000008.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AP31TV6847",
+      "prediction": "AP11AA6644",
+      "confidence": 6.625706075975314e-05
+    },
+    {
+      "image_path": "images/test_000009.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AP31CS2511",
+      "prediction": "AP81CS9511",
+      "confidence": 0.2088624462869035
+    },
+    {
+      "image_path": "images/test_000011.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AR04__8395",
+      "prediction": "AR04AA8395",
+      "confidence": 0.0013055175464575487
+    },
+    {
+      "image_path": "images/test_000012.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AR15__2019",
+      "prediction": "AR15AA2019",
+      "confidence": 0.0013391560511031714
+    },
+    {
+      "image_path": "images/test_000013.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AR11__8724",
+      "prediction": "AM18AA_824",
+      "confidence": 0.00015047501502001056
+    },
+    {
+      "image_path": "images/test_000014.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AR20__0692",
+      "prediction": "AR20AA0692",
+      "confidence": 0.0012495313542983733
+    },
+    {
+      "image_path": "images/test_000015.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AR16__8272",
+      "prediction": "AR16AA8272",
+      "confidence": 0.001333291475527967
+    },
+    {
+      "image_path": "images/test_000016.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AS01DS7523",
+      "prediction": "AS10AA7513",
+      "confidence": 3.2018236771048354e-06
+    },
+    {
+      "image_path": "images/test_000017.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AS25S_6858",
+      "prediction": "AS25AA5685",
+      "confidence": 0.000524525789644477
+    },
+    {
+      "image_path": "images/test_000018.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AS01BF9673",
+      "prediction": "AS18F__967",
+      "confidence": 0.01726963955392027
+    }
+  ],
+  "dataset": "real",
+  "model_name": "cct_s_v2_global",
+  "model_path": "C:\\sutra-data\\ocr\\fpo\\pretrained\\cct-s-v2-global-model\\cct_s_v2_global.onnx",
+  "csv": "C:\\sutra-data\\ocr\\real\\test\\labels.csv",
+  "description": "ZERO-SHOT evaluation of the fast-plate-ocr pretrained cct-s-v2-global-model (MIT licence, github.com/ankandrew/fast-plate-ocr; no fine-tuning) on the real held-out Indian plate TEST split (510 images / 276 unique plates, C:/sutra-data/ocr/real/test/labels.csv, split by plate string). Crops fed as-is, resized to the model's native 64x128 RGB input (keep_aspect_ratio=false), no DESIGN A one-line/two-row best-of-two search. Whole-plate/char accuracy computed in canonical 10-slot space via engine.perception.fpo_adapter (reuses ctc_to_slots's Indian plate grammar). Compare against our own CRNN real-test numbers (whole-plate 27.3% / char 67.2%) in eval/reports/ocr_real_test.json.",
+  "generated_at": "2026-09-22T11:47:56.597128+00:00"
+}

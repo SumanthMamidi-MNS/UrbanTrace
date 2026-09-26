@@ -42,7 +42,8 @@
             "enum": [
               "clone",
               "impossible_travel",
-              "anomaly"
+              "anomaly",
+              "watchlist"
             ],
             "title": "Type",
             "type": "string"
@@ -96,6 +97,32 @@
             ],
             "title": "Distance M"
           },
+          "match_probability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Probability"
+          },
+          "matched_on": {
+            "anyOf": [
+              {
+                "enum": [
+                  "single_read",
+                  "trajectory_consensus"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched On"
+          },
           "min_required_s": {
             "anyOf": [
               {
@@ -106,6 +133,17 @@
               }
             ],
             "title": "Min Required S"
+          },
+          "pattern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pattern"
           },
           "points": {
             "anyOf": [
@@ -120,6 +158,17 @@
               }
             ],
             "title": "Points"
+          },
+          "watchlist_entry_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watchlist Entry Id"
           }
         },
         "title": "AlertEvidence",
@@ -293,12 +342,24 @@
       },
       "Corridor": {
         "properties": {
+          "avg_speed_kmh": {
+            "title": "Avg Speed Kmh",
+            "type": "number"
+          },
           "congestion_index": {
             "title": "Congestion Index",
             "type": "number"
           },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "number"
+          },
           "free_flow_s": {
             "title": "Free Flow S",
+            "type": "number"
+          },
+          "free_flow_speed_kmh": {
+            "title": "Free Flow Speed Kmh",
             "type": "number"
           },
           "from_camera": {
@@ -312,6 +373,10 @@
           "n_trips": {
             "title": "N Trips",
             "type": "integer"
+          },
+          "p85_speed_kmh": {
+            "title": "P85 Speed Kmh",
+            "type": "number"
           },
           "p90_travel_s": {
             "title": "P90 Travel S",
@@ -329,7 +394,11 @@
           "median_travel_s",
           "p90_travel_s",
           "free_flow_s",
-          "congestion_index"
+          "congestion_index",
+          "distance_m",
+          "avg_speed_kmh",
+          "p85_speed_kmh",
+          "free_flow_speed_kmh"
         ],
         "title": "Corridor",
         "type": "object"
@@ -466,6 +535,41 @@
         "title": "EventSummary",
         "type": "object"
       },
+      "FlowBucket": {
+        "properties": {
+          "active_trajectories": {
+            "title": "Active Trajectories",
+            "type": "integer"
+          },
+          "bucket_start": {
+            "title": "Bucket Start",
+            "type": "string"
+          },
+          "events": {
+            "title": "Events",
+            "type": "integer"
+          },
+          "mean_speed_kmh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Speed Kmh"
+          }
+        },
+        "required": [
+          "bucket_start",
+          "events",
+          "active_trajectories",
+          "mean_speed_kmh"
+        ],
+        "title": "FlowBucket",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -506,6 +610,69 @@
           "n_trajectories"
         ],
         "title": "Health",
+        "type": "object"
+      },
+      "HeatPoint": {
+        "properties": {
+          "camera_id": {
+            "title": "Camera Id",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "camera_id",
+          "lat",
+          "lon",
+          "weight"
+        ],
+        "title": "HeatPoint",
+        "type": "object"
+      },
+      "Heatmap": {
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "metric": {
+            "enum": [
+              "density",
+              "speed"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/HeatPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "window_minutes": {
+            "title": "Window Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "at",
+          "window_minutes",
+          "metric",
+          "points"
+        ],
+        "title": "Heatmap",
         "type": "object"
       },
       "LinkEvidence": {
@@ -695,6 +862,17 @@
           "event_id": {
             "title": "Event Id",
             "type": "string"
+          },
+          "heading_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading Deg"
           },
           "lat": {
             "title": "Lat",
@@ -935,6 +1113,17 @@
             "title": "Decoded Plate",
             "type": "string"
           },
+          "direction_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction Label"
+          },
           "end_time": {
             "title": "End Time",
             "type": "string"
@@ -960,6 +1149,17 @@
           "n_events": {
             "title": "N Events",
             "type": "integer"
+          },
+          "overall_heading_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Heading Deg"
           },
           "path": {
             "items": {
@@ -1127,6 +1327,139 @@
         ],
         "title": "VolumeBucket",
         "type": "object"
+      },
+      "WatchlistCreate": {
+        "properties": {
+          "pattern": {
+            "title": "Pattern",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern",
+          "reason"
+        ],
+        "title": "WatchlistCreate",
+        "type": "object"
+      },
+      "WatchlistEntry": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "canonical_patterns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Canonical Patterns",
+            "type": "array"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "entry_id": {
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "hits": {
+            "title": "Hits",
+            "type": "integer"
+          },
+          "pattern": {
+            "title": "Pattern",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "pattern",
+          "canonical_patterns",
+          "reason",
+          "created_at",
+          "active",
+          "hits"
+        ],
+        "title": "WatchlistEntry",
+        "type": "object"
+      },
+      "WatchlistHit": {
+        "properties": {
+          "camera_id": {
+            "title": "Camera Id",
+            "type": "string"
+          },
+          "entry_id": {
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "hit_id": {
+            "title": "Hit Id",
+            "type": "string"
+          },
+          "matched_on": {
+            "enum": [
+              "single_read",
+              "trajectory_consensus"
+            ],
+            "title": "Matched On",
+            "type": "string"
+          },
+          "pattern": {
+            "title": "Pattern",
+            "type": "string"
+          },
+          "plate_read": {
+            "title": "Plate Read",
+            "type": "string"
+          },
+          "probability": {
+            "title": "Probability",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "trajectory_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trajectory Id"
+          }
+        },
+        "required": [
+          "hit_id",
+          "entry_id",
+          "pattern",
+          "event_id",
+          "trajectory_id",
+          "camera_id",
+          "timestamp",
+          "probability",
+          "matched_on",
+          "plate_read"
+        ],
+        "title": "WatchlistHit",
+        "type": "object"
       }
     }
   },
@@ -1241,6 +1574,127 @@
           }
         },
         "summary": "Corridors",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/flow_trend": {
+      "get": {
+        "operationId": "flow_trend_api_analytics_flow_trend_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "bucket_minutes",
+            "required": false,
+            "schema": {
+              "default": 15,
+              "title": "Bucket Minutes",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FlowBucket"
+                  },
+                  "title": "Response Flow Trend Api Analytics Flow Trend Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Flow Trend",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/heatmap": {
+      "get": {
+        "description": "Contract v2: `at` defaults to the current replay sim time (if\nreplay is running), else the end of the dataset.",
+        "operationId": "heatmap_api_analytics_heatmap_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window_minutes",
+            "required": false,
+            "schema": {
+              "default": 15,
+              "title": "Window Minutes",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": false,
+            "schema": {
+              "default": "density",
+              "enum": [
+                "density",
+                "speed"
+              ],
+              "title": "Metric",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Heatmap"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Heatmap",
         "tags": [
           "analytics"
         ]
@@ -1931,6 +2385,179 @@
         "summary": "Get Trajectory",
         "tags": [
           "core"
+        ]
+      }
+    },
+    "/api/watchlist": {
+      "get": {
+        "operationId": "list_watchlist_api_watchlist_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WatchlistEntry"
+                  },
+                  "title": "Response List Watchlist Api Watchlist Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Watchlist",
+        "tags": [
+          "watchlist"
+        ]
+      },
+      "post": {
+        "operationId": "create_watchlist_entry_api_watchlist_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistEntry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Watchlist Entry",
+        "tags": [
+          "watchlist"
+        ]
+      }
+    },
+    "/api/watchlist/hits": {
+      "get": {
+        "operationId": "list_watchlist_hits_api_watchlist_hits_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "entry_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entry Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WatchlistHit"
+                  },
+                  "title": "Response List Watchlist Hits Api Watchlist Hits Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Watchlist Hits",
+        "tags": [
+          "watchlist"
+        ]
+      }
+    },
+    "/api/watchlist/{entry_id}": {
+      "delete": {
+        "operationId": "delete_watchlist_entry_api_watchlist__entry_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Delete Watchlist Entry Api Watchlist  Entry Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Watchlist Entry",
+        "tags": [
+          "watchlist"
         ]
       }
     }

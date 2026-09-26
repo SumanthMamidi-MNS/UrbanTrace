@@ -2,6 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import type { AlertSeverity, AlertType } from '../api/types'
 import { ApiError } from '../api/client'
 import { formatPlate } from '../lib/plate'
+import { IconWatch } from './icons'
 
 export function cx(...xs: (string | false | null | undefined)[]): string {
   return xs.filter(Boolean).join(' ')
@@ -131,7 +132,7 @@ export function Bar({ value, tone = 'accent', className }: { value: number; tone
   )
 }
 
-const TYPE_LABEL: Record<AlertType, string> = { clone: 'Cloned plate', impossible_travel: 'Impossible travel', anomaly: 'Anomaly' }
+const TYPE_LABEL: Record<AlertType, string> = { clone: 'Cloned plate', impossible_travel: 'Impossible travel', anomaly: 'Anomaly', watchlist: 'Watchlist match' }
 export const alertTypeLabel = (t: string) => TYPE_LABEL[t as AlertType] ?? t
 
 export function SeverityBadge({ severity }: { severity: AlertSeverity | string }) {
@@ -162,4 +163,29 @@ export function Stat({ label, value, sub }: { label: string; value: ReactNode; s
 export function Swatch({ color }: { color: string }) {
   const map: Record<string, string> = { white: '#e8ecef', black: '#1b1e22', silver: '#b8c0c8', grey: '#7b848d', red: '#b93a3a', blue: '#3a62b9', green: '#3a8a55', yellow: '#d1b13a' }
   return <span aria-hidden className="inline-block h-2.5 w-2.5 shrink-0 rounded-[2px] border border-ink-500" style={{ background: map[color] ?? '#556' }} />
+}
+
+/** Distinct tag for watchlist alerts: it is an alert (red), but reads as a different kind at a glance. */
+export function WatchlistBadge({ compact }: { compact?: boolean }) {
+  return (
+    <span className="inline-flex h-[18px] shrink-0 items-center gap-1 rounded-sm border border-alert bg-alert-faint px-1.5 text-[10px] font-bold tracking-wider text-alert uppercase">
+      <IconWatch width={12} height={12} strokeWidth={2} />
+      {compact ? 'WL' : 'Watchlist'}
+    </span>
+  )
+}
+
+/** Alert type in list rows: watchlist gets its own badge, other kinds keep the text label. */
+export function AlertTypeTag({ type }: { type: AlertType | string }) {
+  if (type === 'watchlist') return <WatchlistBadge />
+  return <span className={cx('text-xs font-semibold', type === 'anomaly' ? 'text-fg' : 'text-alert')}>{alertTypeLabel(type)}</span>
+}
+
+/** Small arrow rotated to a compass bearing (0 = north). */
+export function HeadingArrow({ deg, size = 14, className }: { deg: number; size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden className={className} style={{ transform: `rotate(${deg}deg)` }}>
+      <path d="M12 3 19 20 12 16 5 20Z" fill="currentColor" />
+    </svg>
+  )
 }

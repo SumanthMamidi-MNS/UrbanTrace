@@ -20,7 +20,10 @@ import type {
   RoadNode,
   SlotRead,
   TrajectoryDetail,
+  WatchlistEntry,
+  WatchlistHit,
 } from '../types'
+import { bearingDeg, compassLabel } from '../../lib/direction'
 import { Rng } from './rng'
 
 // ---------------------------------------------------------------- constants
@@ -70,6 +73,23 @@ export interface MockDb {
   alerts: Alert[]
   liveTrajectoryIds: Set<string>
   liveEventIds: Set<string>
+  /** v2: persisted watchlist (survives replay reset, like the engine's DB) */
+  watchlist: WatchlistEntry[]
+  /** v2: newest last */
+  watchHits: WatchlistHit[]
+}
+
+/** v2 direction fields: heading to the next point (null on the last), overall first -> last. */
+export function withHeadings(path: PathPoint[]): { path: PathPoint[]; overall_heading_deg: number | null; direction_label: string | null } {
+  const out = path.map((p, i) => {
+    const n = path[i + 1]
+    const h = n && (n.lat !== p.lat || n.lon !== p.lon) ? +bearingDeg(p.lat, p.lon, n.lat, n.lon).toFixed(1) : null
+    return { ...p, heading_deg: h }
+  })
+  const a = path[0]
+  const b = path[path.length - 1]
+  const overall = a && b && path.length > 1 && (a.lat !== b.lat || a.lon !== b.lon) ? +bearingDeg(a.lat, a.lon, b.lat, b.lon).toFixed(1) : null
+  return { path: out, overall_heading_deg: overall, direction_label: compassLabel(overall) }
 }
 
 const pad = (n: number, w: number) => String(n).padStart(w, '0')
@@ -137,6 +157,8 @@ export class WorldBuilder {
       alerts: [],
       liveTrajectoryIds: new Set(),
       liveEventIds: new Set(),
+      watchlist: [],
+      watchHits: [],
     }
     this.buildCity()
   }
@@ -292,7 +314,7 @@ export class WorldBuilder {
 
   // ------------------------------------------------ OCR reads
 
-  private confuse(ch: string, slot: number): string {
+  confuse(ch: string, slot: number): string {
     const alpha = SLOT_ALPHABET[slot]
     const opts = (CONFUSE[ch] ?? '').split('').filter((x) => alpha.includes(x) && x !== ch)
     if (opts.length) return this.rng.pick(opts)
@@ -347,7 +369,7 @@ export class WorldBuilder {
     return { argmax: chars, posterior, confidence: +(confSum / 10).toFixed(3) }
   }
 
-  private consensus(truth: string, reads: string[], unreadMasks: boolean[][]): PlateConsensus {
+  consensus(truth: string, reads: string[], unreadMasks: boolean[][]): PlateConsensus {
     const { rng } = this
     const perSlot: SlotRead[][] = []
     let entropy = 0
@@ -391,7 +413,16 @@ export class WorldBuilder {
   // ------------------------------------------------ vehicles
 
   /** Build a full trajectory (not yet registered). Timestamps may be in the future (live mode). */
-  buildVehicle(spec: VehicleSpec): { traj: TrajectoryDetail; posteriors: Map<string, EventDetail['plate_posterior']>; freeFlow: Map<string, number>; times: number[] } {
+  buildVehicle(spec: VehicleSpec): {
+    traj: TrajectoryDetail
+    posteriors: Map<string, EventDetail['plate_posterior']>
+    freeFlow: Map<string, number>
+    times: number[]
+    /** ground truth + per-read argmax / unread masks, so partial consensus can be recomputed live */
+    truth: string
+    reads: string[]
+    unreadMasks: boolean[][]
+  } {
     const { rng } = this
     const route = spec.route ?? this.randomRoute()
     const plate = spec.plate ?? this.randomPlate()
@@ -437,7 +468,7 @@ export class WorldBuilder {
         vehicle_type: vehicleType,
         trajectory_id: trajId,
       })
-      path.push({ event_id: eventId, camera_id: camId, lat: cam.lat, lon: cam.lon, timestamp: iso(t) })
+      path.push({ event_id: eventId, camera_id: camId, lat: cam.lat, lon: cam.lon, timestamp: iso(t), heading_deg: null })
     })
 
     const links: LinkEvidence[] = []
@@ -484,6 +515,7 @@ export class WorldBuilder {
     const consensus = this.consensus(plate, reads, unreadMasks)
     const plateConfidence = consensus.per_slot.reduce((acc, s) => acc * (s[0]?.prob ?? 1), 1)
     const times = idx.map((ci) => Math.round(camTimes[ci]))
+    const dir = withHeadings(path)
     const traj: TrajectoryDetail = {
       trajectory_id: trajId,
       decoded_plate: plate,
@@ -497,10 +529,12 @@ export class WorldBuilder {
       has_alert: false,
       events,
       links,
-      path,
+      path: dir.path,
       consensus,
+      overall_heading_deg: dir.overall_heading_deg,
+      direction_label: dir.direction_label,
     }
-    return { traj, posteriors, freeFlow, times }
+    return { traj, posteriors, freeFlow, times, truth: plate, reads, unreadMasks }
   }
 
   register(built: ReturnType<WorldBuilder['buildVehicle']>) {

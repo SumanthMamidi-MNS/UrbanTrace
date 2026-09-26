@@ -37,6 +37,7 @@ from engine.contracts.store import EventStore
 from engine.contracts.trajectory import Trajectory
 from engine.scoring.fusion import FusionModel
 from eval.metrics import TrajectoryMetrics, compute_trajectory_metrics
+from sim.congestion import CongestionConfig, congestion_config_from_dict
 from sim.generate import generate_dataset_with_city
 
 app = typer.Typer(add_completion=False)
@@ -59,6 +60,24 @@ def _load_city(data_dir: Path) -> CityConfig:
 def _load_events(data_dir: Path) -> list[DetectionEvent]:
     store = EventStore(data_dir / "events.jsonl", data_dir / "embeddings.npy")
     return store.read_all()
+
+
+def _congestion_from_config(config: dict) -> tuple[bool, CongestionConfig | None]:
+    """Read the EVALUATION dataset's own `congestion` setting (and, if
+    recorded, its full `CongestionConfig`) from config.json, so the train
+    split fitting priors is generated under the SAME traffic regime it will
+    be evaluated against -- see the module-level bug this guards against
+    (docs/decisions.md): fitting a kinematic model on free-flow travel times
+    and evaluating it on BPR-congested ones would silently bias every
+    kinematic likelihood. Defaults to False when the key is absent, so
+    datasets generated before the congestion knob existed (e.g. data/run1)
+    behave exactly as before."""
+    congestion = bool(config.get("congestion", False))
+    if not congestion:
+        return False, None
+    raw_cfg = config.get("congestion_config")
+    congestion_config = congestion_config_from_dict(raw_cfg) if raw_cfg else CongestionConfig()
+    return True, congestion_config
 
 
 def _metrics_to_dict(m: TrajectoryMetrics) -> dict:
@@ -156,6 +175,21 @@ def main(
             "is unaffected (still generated at its own full `--hours`)."
         ),
     ),
+    link_bias: float = typer.Option(
+        0.0,
+        "--link-bias",
+        help=(
+            "Beta (nats) added to every association link arc's cost -- the "
+            "solver links iff s(i,j) > -beta instead of s(i,j) > 0 (see "
+            "engine.association.mincostflow module docstring, 'THE ARC-COST "
+            "DERIVATION', and engine.association.window's `link_bias`). "
+            "Default 0.0 reproduces the uncalibrated Bayesian-threshold "
+            "behaviour exactly. Calibrate on a TRAINING day only -- never on "
+            "data/run1 -- via eval/calibrate_link_bias.py; see "
+            "eval/reports/link_bias_calibration.json for the sweep this "
+            "default (if non-zero) was chosen from."
+        ),
+    ),
 ) -> None:
     out.mkdir(parents=True, exist_ok=True)
     report_path = Path("eval/reports/trajectory_metrics.json")
@@ -175,9 +209,11 @@ def main(
     console.print(f"[green]Loaded[/green] {len(events)} events in {t1 - t0:.1f}s")
 
     train_seed = config["seed"] + train_seed_offset
+    congestion, congestion_config = _congestion_from_config(config)
     console.print(
         f"[bold]Fitting priors[/bold] on a separate train split: "
-        f"{train_vehicles} vehicles, seed={train_seed}, same city"
+        f"{train_vehicles} vehicles, seed={train_seed}, same city, "
+        f"congestion={'on (BPR)' if congestion else 'off (free flow)'} (matching eval dataset)"
     )
     train_ds = generate_dataset_with_city(
         city=city,
@@ -185,6 +221,8 @@ def main(
         hours=config["hours"],
         seed=train_seed,
         clone_fraction=config.get("clone_fraction", 0.02),
+        congestion=congestion,
+        congestion_config=congestion_config,
     )
     t2 = time.time()
     models = fit_all(train_ds)
@@ -234,7 +272,9 @@ def main(
             }
         )
 
-    result = solve_windowed(events, gate, fusion_model, entry_exit, city, on_window=_on_window)
+    result = solve_windowed(
+        events, gate, fusion_model, entry_exit, city, on_window=_on_window, link_bias=link_bias
+    )
     t5 = time.time()
     console.print(
         f"[green]Solved[/green] {result.n_windows} windows -> "
@@ -274,11 +314,13 @@ def main(
         "description": description,
         "data_dir": str(data),
         "max_hours": max_hours,
+        "link_bias": link_bias,
         "config": config,
         "train": {
             "n_vehicles": train_vehicles,
             "seed": train_seed,
             "hours": config["hours"],
+            "congestion": congestion,
         },
         "n_events": len(events),
         "gating": {

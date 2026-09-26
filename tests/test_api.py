@@ -277,7 +277,15 @@ def test_trajectory_detail_and_404(client: TestClient):
             "skipped_cameras",
         }
     for point in body["path"]:
-        assert set(point.keys()) == {"event_id", "camera_id", "lat", "lon", "timestamp"}
+        # Contract v2 adds `heading_deg` (additive; v1 clients ignore it).
+        assert set(point.keys()) == {
+            "event_id",
+            "camera_id",
+            "lat",
+            "lon",
+            "timestamp",
+            "heading_deg",
+        }
     _assert_finite(body)
 
     r404 = client.get("/api/trajectories/does-not-exist")
@@ -411,6 +419,8 @@ def test_analytics_corridors(client: TestClient):
     assert isinstance(body, list)
     assert len(body) <= 5
     for row in body:
+        # Contract v2 adds distance_m/avg_speed_kmh/p85_speed_kmh/
+        # free_flow_speed_kmh (additive; v1 clients ignore them).
         assert set(row.keys()) == {
             "from_camera",
             "to_camera",
@@ -419,6 +429,10 @@ def test_analytics_corridors(client: TestClient):
             "p90_travel_s",
             "free_flow_s",
             "congestion_index",
+            "distance_m",
+            "avg_speed_kmh",
+            "p85_speed_kmh",
+            "free_flow_speed_kmh",
         }
     _assert_finite(body)
 
@@ -489,6 +503,183 @@ def test_replay_start_pause_reset(client: TestClient):
     r3 = client.post("/api/replay", json={"action": "reset"})
     assert r3.status_code == 200
     assert r3.json()["running"] is False
+
+
+# ---------------------------------------------------------------------------
+# Contract v2: direction, corridor speeds, watchlist, heatmap, flow_trend
+# ---------------------------------------------------------------------------
+
+
+def test_trajectory_detail_has_direction_fields(client: TestClient):
+    trajs = client.get("/api/trajectories", params={"min_len": 2, "limit": 1}).json()["items"]
+    if not trajs:
+        pytest.skip("no multi-event trajectory in the tiny dataset")
+    traj_id = trajs[0]["trajectory_id"]
+    body = client.get(f"/api/trajectories/{traj_id}").json()
+
+    assert "overall_heading_deg" in body
+    assert "direction_label" in body
+    if body["overall_heading_deg"] is not None:
+        assert 0.0 <= body["overall_heading_deg"] < 360.0
+        assert body["direction_label"] in {"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
+
+    path = body["path"]
+    for point in path:
+        assert "heading_deg" in point
+    # every point but the last has a heading; the last is null.
+    for point in path[:-1]:
+        assert point["heading_deg"] is not None
+    if path:
+        assert path[-1]["heading_deg"] is None
+    _assert_finite(body)
+
+
+def test_corridors_have_speed_fields_and_are_plausible(client: TestClient):
+    r = client.get("/api/analytics/corridors", params={"limit": 20})
+    assert r.status_code == 200
+    body = r.json()
+    for row in body:
+        assert set(row.keys()) == {
+            "from_camera",
+            "to_camera",
+            "n_trips",
+            "median_travel_s",
+            "p90_travel_s",
+            "free_flow_s",
+            "congestion_index",
+            "distance_m",
+            "avg_speed_kmh",
+            "p85_speed_kmh",
+            "free_flow_speed_kmh",
+        }
+        assert row["distance_m"] >= 0.0
+        # DEFAULT_V_MAX_KMH (engine.scoring.kinematic_lr) -- speeds beyond it
+        # are excluded as clone evidence, so nothing plausible can exceed it.
+        assert 0.0 <= row["avg_speed_kmh"] <= 120.0
+        assert 0.0 <= row["p85_speed_kmh"] <= 120.0
+        # sim/city.py's posted speed limits top out at 80 km/h (arterial).
+        assert 0.0 <= row["free_flow_speed_kmh"] <= 90.0
+    _assert_finite(body)
+
+
+def test_analytics_heatmap_density_and_speed(client: TestClient):
+    r = client.get("/api/analytics/heatmap", params={"window_minutes": 120, "metric": "density"})
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body.keys()) == {"at", "window_minutes", "metric", "points"}
+    assert body["metric"] == "density"
+    for p in body["points"]:
+        assert set(p.keys()) == {"camera_id", "lat", "lon", "weight"}
+        assert 0.0 <= p["weight"] <= 1.0
+    _assert_finite(body)
+
+    r2 = client.get("/api/analytics/heatmap", params={"window_minutes": 120, "metric": "speed"})
+    assert r2.status_code == 200
+    body2 = r2.json()
+    assert body2["metric"] == "speed"
+    for p in body2["points"]:
+        assert p["weight"] >= 0.0
+    _assert_finite(body2)
+
+
+def test_analytics_flow_trend(client: TestClient):
+    r = client.get("/api/analytics/flow_trend", params={"bucket_minutes": 30})
+    assert r.status_code == 200
+    body = r.json()
+    assert isinstance(body, list)
+    for row in body:
+        assert set(row.keys()) == {
+            "bucket_start",
+            "events",
+            "active_trajectories",
+            "mean_speed_kmh",
+        }
+        assert row["events"] >= 0
+        assert row["active_trajectories"] >= 0
+    _assert_finite(body)
+
+
+def test_watchlist_crud_and_grammar_rejection(client: TestClient):
+    r = client.post("/api/watchlist", json={"pattern": "MH12??1234", "reason": "test entry"})
+    assert r.status_code == 201
+    entry = r.json()
+    assert set(entry.keys()) == {
+        "entry_id",
+        "pattern",
+        "canonical_patterns",
+        "reason",
+        "created_at",
+        "active",
+        "hits",
+    }
+    assert entry["hits"] == 0
+    assert entry["active"] is True
+    _assert_finite(entry)
+
+    r_list = client.get("/api/watchlist")
+    assert r_list.status_code == 200
+    assert any(e["entry_id"] == entry["entry_id"] for e in r_list.json())
+
+    r_bad = client.post("/api/watchlist", json={"pattern": "ZZ", "reason": "too short"})
+    assert r_bad.status_code == 422
+    assert "detail" in r_bad.json()
+
+    r_hits = client.get("/api/watchlist/hits", params={"entry_id": entry["entry_id"]})
+    assert r_hits.status_code == 200
+    assert r_hits.json() == []
+
+    r_del = client.delete(f"/api/watchlist/{entry['entry_id']}")
+    assert r_del.status_code == 200
+    assert r_del.json() == {"deleted": True}
+
+    r_del_missing = client.delete(f"/api/watchlist/{entry['entry_id']}")
+    assert r_del_missing.status_code == 404
+
+
+def test_watchlist_alert_fires_live_over_websocket(client: TestClient):
+    """Real-time requirement (docs/api-contract.md Contract v2): "during
+    replay, matches emit `alert` messages on `/ws/live`". Picks an existing
+    multi-event trajectory's own decoded plate as the watchlist pattern
+    (guaranteed to actually appear in this dataset), starts replay at high
+    speed, and asserts a `type: "alert"` / `data.type: "watchlist"` message
+    arrives, plus a matching hit shows up in `/api/watchlist/hits`."""
+    client.post("/api/replay", json={"action": "reset"})
+    trajs = client.get("/api/trajectories", params={"min_len": 2, "limit": 1}).json()["items"]
+    if not trajs:
+        pytest.skip("no multi-event trajectory in the tiny dataset")
+    # `decoded_plate` may contain "_" for a legitimately-blank slot (short
+    # series/number); the search/watchlist grammar only accepts letters,
+    # digits, or "?" -- treat a blank slot as "unknown" for this pattern.
+    plate = trajs[0]["decoded_plate"].replace("_", "?")
+
+    r = client.post("/api/watchlist", json={"pattern": plate, "reason": "e2e watchlist test"})
+    assert r.status_code == 201
+    entry_id = r.json()["entry_id"]
+
+    try:
+        with client.websocket_connect("/ws/live") as ws:
+            client.post("/api/replay", json={"action": "start", "speed": 50_000})
+            found_watchlist_alert = False
+            for _ in range(3000):
+                msg = ws.receive_json()
+                if msg["type"] == "alert" and msg["data"]["type"] == "watchlist":
+                    found_watchlist_alert = True
+                    assert msg["data"]["evidence"]["watchlist_entry_id"] == entry_id
+                    assert msg["data"]["evidence"]["matched_on"] in (
+                        "single_read",
+                        "trajectory_consensus",
+                    )
+                    break
+                if msg["type"] == "clock" and not msg["data"]["running"]:
+                    break  # replay finished without (more) alerts
+        assert found_watchlist_alert, "expected a watchlist alert over /ws/live"
+
+        r_hits = client.get("/api/watchlist/hits", params={"entry_id": entry_id})
+        assert r_hits.status_code == 200
+        assert len(r_hits.json()) >= 1
+    finally:
+        client.post("/api/replay", json={"action": "reset"})
+        client.delete(f"/api/watchlist/{entry_id}")
 
 
 def test_ws_live_delivers_clock_and_event(client: TestClient):

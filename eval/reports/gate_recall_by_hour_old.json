@@ -1,0 +1,221 @@
+{
+  "data_dir": "C:\\sutra-data\\runs\\run2",
+  "config": {
+    "cameras": 50,
+    "clone_fraction": 0.02,
+    "congestion": true,
+    "congestion_config": {
+      "alpha": 0.15,
+      "beta": 4,
+      "bucket_minutes": 5,
+      "capacity_by_speed_kmh": {
+        "30.0": 60.0,
+        "50.0": 130.0,
+        "80.0": 140.0
+      },
+      "capacity_fallback": 300.0,
+      "enabled": true
+    },
+    "corruption": {
+      "attr_confidence_max": 0.95,
+      "attr_confidence_min": 0.55,
+      "clone_fraction": 0.02,
+      "color_p_correct": 0.8,
+      "embedding_noise_sigma_max": 0.142,
+      "embedding_noise_sigma_min": 0.13,
+      "occlude_run_len_max": 4,
+      "occlude_run_len_min": 2,
+      "p_blank_correct": 0.995,
+      "p_char_confusable": 0.85,
+      "p_char_correct": 0.99,
+      "p_miss": 0.05,
+      "p_occlude": 0.03,
+      "posterior_group_leak": 0.85,
+      "posterior_peak_mass_max": 0.85,
+      "posterior_peak_mass_min": 0.55,
+      "type_p_correct": 0.85
+    },
+    "hours": 24,
+    "seed": 43,
+    "vehicles": 20000
+  },
+  "train": {
+    "n_vehicles": 8000,
+    "seed": 9044,
+    "hours": 24,
+    "congestion": true
+  },
+  "congestion_tail_factor": 1.0,
+  "n_events": 103475,
+  "overall_mean_candidates_per_event": 224.67247161150036,
+  "by_hour": {
+    "0": {
+      "n_true_pairs": 1866,
+      "n_recalled": 1860,
+      "recall": 0.9967845659163987,
+      "n_events": 2314,
+      "mean_candidates_per_event": 84.5877268798617
+    },
+    "1": {
+      "n_true_pairs": 1849,
+      "n_recalled": 1843,
+      "recall": 0.9967550027041644,
+      "n_events": 2286,
+      "mean_candidates_per_event": 88.05249343832021
+    },
+    "2": {
+      "n_true_pairs": 1803,
+      "n_recalled": 1796,
+      "recall": 0.9961175818080976,
+      "n_events": 2236,
+      "mean_candidates_per_event": 87.16457960644007
+    },
+    "3": {
+      "n_true_pairs": 1810,
+      "n_recalled": 1808,
+      "recall": 0.9988950276243094,
+      "n_events": 2251,
+      "mean_candidates_per_event": 89.7721012883163
+    },
+    "4": {
+      "n_true_pairs": 1759,
+      "n_recalled": 1753,
+      "recall": 0.9965889710062535,
+      "n_events": 2185,
+      "mean_candidates_per_event": 86.41006864988559
+    },
+    "5": {
+      "n_true_pairs": 2087,
+      "n_recalled": 2079,
+      "recall": 0.996166746526114,
+      "n_events": 2596,
+      "mean_candidates_per_event": 99.34745762711864
+    },
+    "6": {
+      "n_true_pairs": 3017,
+      "n_recalled": 2949,
+      "recall": 0.9774610540271793,
+      "n_events": 3739,
+      "mean_candidates_per_event": 142.12436480342336
+    },
+    "7": {
+      "n_true_pairs": 5734,
+      "n_recalled": 4990,
+      "recall": 0.870247645622602,
+      "n_events": 7172,
+      "mean_candidates_per_event": 270.9346068042387
+    },
+    "8": {
+      "n_true_pairs": 7955,
+      "n_recalled": 5472,
+      "recall": 0.6878692646134507,
+      "n_events": 9838,
+      "mean_candidates_per_event": 376.59392152876603
+    },
+    "9": {
+      "n_true_pairs": 5911,
+      "n_recalled": 5214,
+      "recall": 0.8820842497039418,
+      "n_events": 7318,
+      "mean_candidates_per_event": 289.60890953812515
+    },
+    "10": {
+      "n_true_pairs": 3228,
+      "n_recalled": 3163,
+      "recall": 0.9798636926889716,
+      "n_events": 3994,
+      "mean_candidates_per_event": 169.20655983975965
+    },
+    "11": {
+      "n_true_pairs": 2305,
+      "n_recalled": 2293,
+      "recall": 0.9947939262472885,
+      "n_events": 2834,
+      "mean_candidates_per_event": 111.3955539872971
+    },
+    "12": {
+      "n_true_pairs": 1889,
+      "n_recalled": 1882,
+      "recall": 0.9962943356273161,
+      "n_events": 2330,
+      "mean_candidates_per_event": 89.9214592274678
+    },
+    "13": {
+      "n_true_pairs": 1705,
+      "n_recalled": 1698,
+      "recall": 0.9958944281524926,
+      "n_events": 2131,
+      "mean_candidates_per_event": 80.76724542468325
+    },
+    "14": {
+      "n_true_pairs": 2177,
+      "n_recalled": 2162,
+      "recall": 0.9931097841065687,
+      "n_events": 2700,
+      "mean_candidates_per_event": 103.45333333333333
+    },
+    "15": {
+      "n_true_pairs": 3058,
+      "n_recalled": 3020,
+      "recall": 0.9875735775016351,
+      "n_events": 3829,
+      "mean_candidates_per_event": 145.38600156698877
+    },
+    "16": {
+      "n_true_pairs": 5409,
+      "n_recalled": 4771,
+      "recall": 0.8820484377888704,
+      "n_events": 6754,
+      "mean_candidates_per_event": 254.9176784127924
+    },
+    "17": {
+      "n_true_pairs": 7676,
+      "n_recalled": 5333,
+      "recall": 0.6947628973423658,
+      "n_events": 9472,
+      "mean_candidates_per_event": 358.9419341216216
+    },
+    "18": {
+      "n_true_pairs": 7215,
+      "n_recalled": 5543,
+      "recall": 0.7682605682605682,
+      "n_events": 8957,
+      "mean_candidates_per_event": 340.34096237579547
+    },
+    "19": {
+      "n_true_pairs": 5413,
+      "n_recalled": 4931,
+      "recall": 0.9109551080731572,
+      "n_events": 6675,
+      "mean_candidates_per_event": 269.3956554307116
+    },
+    "20": {
+      "n_true_pairs": 3687,
+      "n_recalled": 3615,
+      "recall": 0.9804719283970708,
+      "n_events": 4519,
+      "mean_candidates_per_event": 180.53861473777386
+    },
+    "21": {
+      "n_true_pairs": 2273,
+      "n_recalled": 2268,
+      "recall": 0.9978002639683238,
+      "n_events": 2821,
+      "mean_candidates_per_event": 113.24884792626727
+    },
+    "22": {
+      "n_true_pairs": 1948,
+      "n_recalled": 1940,
+      "recall": 0.9958932238193019,
+      "n_events": 2404,
+      "mean_candidates_per_event": 91.70133111480865
+    },
+    "23": {
+      "n_true_pairs": 1705,
+      "n_recalled": 1702,
+      "recall": 0.9982404692082112,
+      "n_events": 2120,
+      "mean_candidates_per_event": 82.66509433962264
+    }
+  }
+}

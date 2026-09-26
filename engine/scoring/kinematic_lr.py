@@ -23,6 +23,33 @@ road-graph estimate (shortest-path travel time at the posted speed limit)
 via a simple empirical-Bayes blend, weighted by how many real observations
 exist. A pair with zero observations falls back to the road-graph estimate
 entirely.
+
+THE NULL MODEL, H0 -- p0(dt): originally a flat density over the whole
+outer gate window, which is misspecified. An unrelated vehicle admitted by
+the same spatio-temporal gate is NOT arriving at a uniformly random time
+inside that window -- it's on the same road, subject to the same traffic,
+so its dt clusters near the free-flow travel time too, just with more
+spread than the true predecessor's dt does. A flat p0 makes any plausible
+dt look like overwhelming evidence for a link (any vehicle with a sane
+transit time got rewarded for merely being inside a window built around
+the free-flow time), which is exactly what over-merged trajectories in
+practice (docs/decisions.md).
+
+p0 is now fit empirically, the same way the appearance channel fits its
+own p0/p1 histograms: `fit_negative_kinematic_priors` (called from
+`engine.calibration.fit_priors.fit_all`, AFTER p1 and the gate it defines
+both exist) walks the TRAIN split's own spatio-temporal gate and collects
+every candidate pair the gate admitted that the ground truth says is a
+DIFFERENT vehicle. Those dt's, normalised by each pair's free-flow travel
+time (`r = dt / t_ff`) so pairs of very different distances can still pool
+into one shared distribution, are fit as a log-normal per (camera-pair,
+tod) bucket, itself shrunk toward a tod-pooled prior and finally a fully
+global prior -- the same "never leave a bucket unmodelled" pattern p1
+already uses for the road-graph fallback, just two levels deep instead of
+one because negative observations are sparser per exact camera pair than
+positive ones. A bare `KinematicModel(...)` with no `neg_priors` attached
+(most unit tests in this module construct one directly) transparently
+falls back to the original flat H0 -- see `_log_h0`.
 """
 
 import math
@@ -48,6 +75,27 @@ SHRINKAGE_PSEUDOCOUNT = 5.0
 # implausible pairs before they reach scoring; this is just H0's density.
 DEFAULT_DT_MIN_S = 0.0
 DEFAULT_DT_MAX_S = 2 * 3600.0
+
+# Empirical-Bayes pseudo-count blending a (camera-pair, tod) bucket's own
+# NEGATIVE gated observations toward the tod-pooled prior below -- mirrors
+# SHRINKAGE_PSEUDOCOUNT's role for p1, just for p0.
+NEG_SHRINKAGE_PSEUDOCOUNT = 5.0
+# Pseudo-count blending a tod bucket's pooled (across every camera pair)
+# negative-observation stats toward the fully-global (across every tod
+# bucket too) pooled stats -- the fallback of last resort when even a whole
+# tod bucket has too few negative observations of its own.
+TOD_POOL_PSEUDOCOUNT = 20.0
+# sigma (in dt/free-flow-time log-space, "log(r)") used for p0 when there is
+# truly no negative-pair observation anywhere to learn from (e.g. a tiny
+# synthetic test dataset) -- deliberately wide, so an unmodelled p0 stays
+# visibly less informative than a typical fitted p1, never a hard failure.
+FALLBACK_NEG_SIGMA_R = 0.8
+# Kinematic log-LR clamp, mirroring appearance_lr.CLAMP: once p0 stops being
+# a flat denominator, a very tight p1/p0 mismatch can otherwise blow up --
+# this keeps one channel from single-handedly dominating fusion
+# (architecture.md is explicit that all three channels stay independent
+# evidence, not a veto).
+KINEMATIC_LR_CLAMP = 20.0
 
 # Chunk size for batched pair scoring, in PAIRS -- same rationale as
 # `engine.scoring.plate_lr.PAIR_CHUNK_SIZE`. Unlike the plate/appearance
@@ -87,6 +135,60 @@ class PairParams:
 
 
 @dataclass
+class NegativeKinematicPriors:
+    """The empirically-fit p0(dt): the null model for 'different vehicle,
+    same spatio-temporal gate' (this module's docstring, "THE NULL MODEL").
+    Stored in dt-normalised-by-free-flow-time log space ("log(r)",
+    r = dt / t_ff) so pairs of very different camera-to-camera distances
+    still pool into shared statistics -- the whole reason for the
+    normalisation, since raw dt is not comparable across a short hop and a
+    long one but r roughly is.
+
+    `pair_params` holds each (camera_i, camera_j, tod) bucket's OWN raw
+    fitted log(r) mean/std (unblended, mirroring `KinematicModel.
+    pair_params`'s own raw-fit convention); `tod_pooled` holds each tod
+    bucket's stats pooled across every camera pair (already blended toward
+    `global_mu_r`/`global_sigma_r` at fit time) -- the prior a sparse
+    per-pair bucket shrinks toward, via `KinematicModel.params0_for`."""
+
+    pair_params: dict[tuple[str, str, str], PairParams]
+    tod_pooled: dict[str, PairParams]
+    global_mu_r: float
+    global_sigma_r: float
+
+
+def _mean_std_n(values: list[float]) -> tuple[float, float, int]:
+    """Sample mean/std of `values` plus the count, for empirical-Bayes
+    blending. n=0 -> (0.0, MIN_SIGMA, 0); n=1 -> a std of MIN_SIGMA as a
+    placeholder (a single observation can't estimate spread at all, but its
+    weight in any blend that uses `n` is tiny anyway, so this never matters
+    much in practice -- same reasoning `fit_kinematic_model` already uses
+    for singleton p1 buckets)."""
+    n = len(values)
+    if n == 0:
+        return 0.0, MIN_SIGMA, 0
+    mu = sum(values) / n
+    if n > 1:
+        var = sum((x - mu) ** 2 for x in values) / (n - 1)
+        sigma = max(var**0.5, MIN_SIGMA)
+    else:
+        sigma = MIN_SIGMA
+    return mu, sigma, n
+
+
+def _mean_std(values: list[float], fallback_sigma: float) -> tuple[float, float]:
+    """Like `_mean_std_n` but for a top-level pooled prior with no further
+    fallback of its own: an empty or singleton sample uses `fallback_sigma`
+    outright rather than the placeholder `MIN_SIGMA` (which would claim far
+    more confidence than a handful of observations, or none at all,
+    actually supports)."""
+    mu, sigma, n = _mean_std_n(values)
+    if n <= 1:
+        return mu, fallback_sigma
+    return mu, sigma
+
+
+@dataclass
 class KinematicLRResult:
     log_lr: float
     physically_impossible: bool
@@ -112,6 +214,7 @@ class KinematicModel:
     default_sigma: float = 0.4
     dt_min: float = DEFAULT_DT_MIN_S
     dt_max: float = DEFAULT_DT_MAX_S
+    neg_priors: NegativeKinematicPriors | None = None
     graph: nx.DiGraph = field(init=False, repr=False)
     node_by_camera: dict[str, str] = field(init=False, repr=False)
     camera_by_node: dict[str, str] = field(init=False, repr=False)
@@ -175,6 +278,63 @@ class KinematicModel:
         sigma = (n * fitted.sigma + k0 * prior_sigma) / (n + k0)
         return PairParams(mu=mu, sigma=max(sigma, MIN_SIGMA), n_obs=n)
 
+    def params0_for(
+        self, cam_i: str, cam_j: str, tod: str, t_ff: float | None = None
+    ) -> PairParams:
+        """Mirrors `params_for`, but for the empirically-fit null model p0
+        (this module's docstring, "THE NULL MODEL"). Blends a (camera-pair,
+        tod) bucket's own raw fitted negative-observation stats toward the
+        tod-pooled prior (itself already blended toward the fully-global
+        pooled stats at fit time in `fit_negative_kinematic_priors`) via the
+        same empirical-Bayes pattern `params_for` uses for p1 -- a pair with
+        zero of its own negative observations is never left unmodelled, it
+        just falls back one level further. Requires `self.neg_priors` to be
+        set; callers (`_log_h0`, `_build_dense_arrays`) check that first.
+
+        `t_ff` (free-flow travel time, seconds) anchors the pooled log(r)
+        priors back into log(dt) space; pass it when the caller already has
+        it (e.g. from `_shortest`) to avoid a redundant lookup, otherwise it
+        is re-derived here."""
+        neg = self.neg_priors
+        assert neg is not None, "params0_for requires a fitted NegativeKinematicPriors"
+        if t_ff is None or t_ff <= 0:
+            shortest = self._shortest(cam_i, cam_j)
+            t_ff = shortest[1] if shortest is not None else max(self.dt_max / 4, 1.0)
+        log_t_ff = math.log(max(t_ff, 1.0))
+
+        prior = neg.tod_pooled.get(tod)
+        if prior is None:
+            prior = PairParams(mu=neg.global_mu_r, sigma=neg.global_sigma_r, n_obs=0)
+
+        fitted = neg.pair_params.get((cam_i, cam_j, tod))
+        if fitted is None:
+            mu_r, sigma_r, n = prior.mu, prior.sigma, 0
+        else:
+            k0 = NEG_SHRINKAGE_PSEUDOCOUNT
+            n = fitted.n_obs
+            mu_r = (n * fitted.mu + k0 * prior.mu) / (n + k0)
+            sigma_r = (n * fitted.sigma + k0 * prior.sigma) / (n + k0)
+        return PairParams(mu=log_t_ff + mu_r, sigma=max(sigma_r, MIN_SIGMA), n_obs=n)
+
+    def _log_h0(
+        self,
+        cam_i: str,
+        cam_j: str,
+        tod: str,
+        dt: float,
+        shortest: tuple[float, float, list[str]] | None,
+    ) -> float:
+        """log p0(dt). Empirically fit once `neg_priors` is attached (the
+        normal case in production, via `engine.calibration.fit_priors.
+        fit_all`); otherwise falls back to the original flat density over
+        the outer gate window, so a bare `KinematicModel(...)` built
+        directly (most unit tests in this module) keeps working unchanged."""
+        if self.neg_priors is None:
+            return -math.log(self.dt_max - self.dt_min)
+        t_ff = shortest[1] if shortest is not None else None
+        params0 = self.params0_for(cam_i, cam_j, tod, t_ff)
+        return _lognormal_logpdf(dt, params0.mu, params0.sigma)
+
     def score(self, cam_i: str, t_i: datetime, cam_j: str, t_j: datetime) -> KinematicLRResult:
         dt = (t_j - t_i).total_seconds()
         shortest = self._shortest(cam_i, cam_j)
@@ -205,8 +365,9 @@ class KinematicModel:
         params = self.params_for(cam_i, cam_j, tod)
 
         log_h1 = _lognormal_logpdf(dt, params.mu, params.sigma)
-        log_h0 = -math.log(self.dt_max - self.dt_min)
+        log_h0 = self._log_h0(cam_i, cam_j, tod, dt, shortest)
         log_lr = log_h1 - log_h0 + len(skipped) * math.log(self.p_miss)
+        log_lr = max(-KINEMATIC_LR_CLAMP, min(KINEMATIC_LR_CLAMP, log_lr))
 
         return KinematicLRResult(
             log_lr=log_lr,
@@ -247,6 +408,9 @@ class KinematicModel:
         skipped_lists: list[list[list[str]]] = [[[] for _ in range(n)] for _ in range(n)]
         mu = np.zeros((len(TOD_BUCKETS), n, n))
         sigma = np.full((len(TOD_BUCKETS), n, n), self.default_sigma)
+        has_neg_priors = self.neg_priors is not None
+        mu0 = np.zeros((len(TOD_BUCKETS), n, n))
+        sigma0 = np.full((len(TOD_BUCKETS), n, n), FALLBACK_NEG_SIGMA_R)
 
         for i, cam_i in enumerate(cameras):
             for j, cam_j in enumerate(cameras):
@@ -262,6 +426,11 @@ class KinematicModel:
                     params = self.params_for(cam_i, cam_j, tod)
                     mu[k, i, j] = params.mu
                     sigma[k, i, j] = params.sigma
+                    if has_neg_priors:
+                        t_ff = shortest[1] if shortest is not None else None
+                        params0 = self.params0_for(cam_i, cam_j, tod, t_ff)
+                        mu0[k, i, j] = params0.mu
+                        sigma0[k, i, j] = params0.sigma
 
         v_max_ms = self.v_max_kmh * 1000.0 / 3600.0
         return KinematicDenseArrays(
@@ -273,6 +442,9 @@ class KinematicModel:
             skipped_lists=skipped_lists,
             mu=mu,
             sigma=sigma,
+            mu0=mu0,
+            sigma0=sigma0,
+            has_neg_priors=has_neg_priors,
             v_max_ms=v_max_ms,
         )
 
@@ -309,8 +481,18 @@ class KinematicModel:
             (np.log(safe_dt) - mu) ** 2
         ) / (2 * sigma * sigma)
         log_h1 = np.where(dt > 0, log_h1, -np.inf)
-        log_h0 = -math.log(self.dt_max - self.dt_min)
+
+        if dense.has_neg_priors:
+            mu0 = dense.mu0[tod_a, cam_a, cam_b]
+            sigma0 = dense.sigma0[tod_a, cam_a, cam_b]
+            log_h0 = -np.log(safe_dt * sigma0 * math.sqrt(2 * math.pi)) - (
+                (np.log(safe_dt) - mu0) ** 2
+            ) / (2 * sigma0 * sigma0)
+        else:
+            log_h0 = -math.log(self.dt_max - self.dt_min)
+
         log_lr = log_h1 - log_h0 + nskip * math.log(self.p_miss)
+        log_lr = np.clip(log_lr, -KINEMATIC_LR_CLAMP, KINEMATIC_LR_CLAMP)
         log_lr = np.where(physically_impossible, -np.inf, log_lr)
 
         expected_fallback = np.where(reach, stime, 0.0)
@@ -396,8 +578,11 @@ class KinematicDenseArrays:
     n_skipped: np.ndarray  # (n_cams, n_cams) int
     reachable: np.ndarray  # (n_cams, n_cams) bool
     skipped_lists: list[list[list[str]]]  # [i][j] -> intermediate camera ids
-    mu: np.ndarray  # (n_tod, n_cams, n_cams)
-    sigma: np.ndarray  # (n_tod, n_cams, n_cams)
+    mu: np.ndarray  # (n_tod, n_cams, n_cams) -- p1
+    sigma: np.ndarray  # (n_tod, n_cams, n_cams) -- p1
+    mu0: np.ndarray  # (n_tod, n_cams, n_cams) -- p0, only meaningful if has_neg_priors
+    sigma0: np.ndarray  # (n_tod, n_cams, n_cams) -- p0, only meaningful if has_neg_priors
+    has_neg_priors: bool
     v_max_ms: float
 
 
@@ -503,4 +688,91 @@ def fit_kinematic_model(
         v_max_kmh=v_max_kmh,
         p_miss=p_miss,
         default_sigma=default_sigma,
+    )
+
+
+def fit_negative_kinematic_priors(
+    events: list[DetectionEvent],
+    candidates: dict[str, list[str]],
+    p1_model: KinematicModel,
+) -> NegativeKinematicPriors:
+    """Fit p0(dt), the null model for 'different vehicle, same gate' (this
+    module's docstring, "THE NULL MODEL"), on TRAIN-split GATED negative
+    pairs.
+
+    `candidates` is a gate's own `event_id -> [candidate predecessor
+    event_id, ...]` map (`engine.association.gating.GateResult.candidates`,
+    built with a `Gate(model=p1_model)` over `events` -- p1 must already be
+    fit before this runs, since the gate window is derived from it). This
+    function does not import `engine.association.gating` itself: that
+    module imports FROM this one (`KinematicModel`, `time_of_day_bucket`),
+    so importing it back here would be circular. The caller
+    (`engine.calibration.fit_priors.fit_all`) builds the gate and passes the
+    plain candidate dict through instead.
+
+    A pair is a NEGATIVE observation when the gate admitted it but the two
+    events' `gt_vehicle_id`s differ (both must be known; an event with no
+    ground truth is skipped rather than guessed at). Each negative's dt is
+    normalised by that camera pair's free-flow travel time
+    (`r = dt / t_ff`, via `p1_model.shortest_path_info`) so camera pairs of
+    very different distances still pool into one shared log(r) distribution
+    -- raw dt is not comparable across a short hop and a long one, but r
+    roughly is. Never leaves a bucket unmodelled: a (camera-pair, tod) with
+    no negative observations of its own falls back to that tod's pooled
+    stats (across every camera pair), which itself falls back to the fully
+    global pooled stats if even the tod bucket has none."""
+    events_by_id = {e.event_id: e for e in events}
+    grouped: dict[tuple[str, str, str], list[float]] = {}
+    by_tod: dict[str, list[float]] = {tod: [] for tod in TOD_BUCKETS}
+    global_log_r: list[float] = []
+
+    for succ_id, pred_ids in candidates.items():
+        succ = events_by_id.get(succ_id)
+        if succ is None or succ.gt_vehicle_id is None:
+            continue
+        for pred_id in pred_ids:
+            pred = events_by_id.get(pred_id)
+            if pred is None or pred.gt_vehicle_id is None:
+                continue
+            if pred.gt_vehicle_id == succ.gt_vehicle_id:
+                continue  # a positive (same-vehicle) pair, not a negative
+            dt = (succ.timestamp - pred.timestamp).total_seconds()
+            if dt <= 0:
+                continue
+            shortest = p1_model.shortest_path_info(pred.camera_id, succ.camera_id)
+            if shortest is None:
+                continue
+            t_ff = shortest[1]
+            if t_ff <= 0:
+                continue
+            log_r = math.log(dt / t_ff)
+            tod = time_of_day_bucket(pred.timestamp)
+            key = (pred.camera_id, succ.camera_id, tod)
+            grouped.setdefault(key, []).append(log_r)
+            by_tod[tod].append(log_r)
+            global_log_r.append(log_r)
+
+    global_mu_r, global_sigma_r = _mean_std(global_log_r, FALLBACK_NEG_SIGMA_R)
+
+    tod_pooled: dict[str, PairParams] = {}
+    for tod in TOD_BUCKETS:
+        local_mu, local_sigma, n = _mean_std_n(by_tod[tod])
+        if n == 0:
+            tod_pooled[tod] = PairParams(mu=global_mu_r, sigma=global_sigma_r, n_obs=0)
+        else:
+            k0 = TOD_POOL_PSEUDOCOUNT
+            mu = (n * local_mu + k0 * global_mu_r) / (n + k0)
+            sigma = (n * local_sigma + k0 * global_sigma_r) / (n + k0)
+            tod_pooled[tod] = PairParams(mu=mu, sigma=max(sigma, MIN_SIGMA), n_obs=n)
+
+    pair_params: dict[tuple[str, str, str], PairParams] = {}
+    for key, log_rs in grouped.items():
+        mu, sigma, n = _mean_std_n(log_rs)
+        pair_params[key] = PairParams(mu=mu, sigma=sigma, n_obs=n)
+
+    return NegativeKinematicPriors(
+        pair_params=pair_params,
+        tod_pooled=tod_pooled,
+        global_mu_r=global_mu_r,
+        global_sigma_r=global_sigma_r,
     )

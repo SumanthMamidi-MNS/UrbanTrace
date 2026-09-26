@@ -1,14 +1,19 @@
-import { LngLatBounds, Map as MLMap, Marker, Popup, type GeoJSONSource, type StyleSpecification } from 'maplibre-gl'
+import { LngLatBounds, Map as MLMap, Marker, Popup, type ExpressionSpecification, type GeoJSONSource, type StyleSpecification } from 'maplibre-gl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Feature, FeatureCollection, Point } from 'geojson'
 import type { CameraStats, City } from '../api/types'
 import { liveStore } from '../hooks/liveStore'
 import type { LngLat } from '../lib/geo'
+import { HEAT_RAMP } from '../lib/heat'
 import { cx } from './ui'
 
 export type MapLine = { id: string; coords: LngLat[]; color?: string; width?: number; opacity?: number; dashed?: boolean }
 export type MapPoint = { id: string; lngLat: LngLat; color?: string; radius?: number; stroke?: string; strokeWidth?: number }
 export type MapLabel = { id: string; lngLat: LngLat; text: string; tone?: 'accent' | 'alert' | 'neutral' }
+/** Direction-of-travel arrow drawn just ahead of a point, rotated to a compass heading (0 = north). */
+export type MapArrow = { id: string; lngLat: LngLat; heading: number }
+/** Heat points with weight already normalised to [0, 1]. */
+export type MapHeat = { points: { id: string; lngLat: LngLat; weight: number }[] }
 
 type Props = {
   city: City
@@ -18,6 +23,9 @@ type Props = {
   lines?: MapLine[]
   points?: MapPoint[]
   labels?: MapLabel[]
+  arrows?: MapArrow[]
+  /** heatmap layer drawn over the roads, under cameras and tracks; null/undefined hides it */
+  heat?: MapHeat | null
   /** refit when this key changes; coords to fit (defaults to the whole city) */
   fit?: { key: string; coords?: LngLat[]; padding?: number; maxZoom?: number }
   /** animate a ring at a camera whenever a live event arrives */
@@ -66,7 +74,28 @@ function roadsGeoJSON(city: City): FeatureCollection {
   return { type: 'FeatureCollection', features }
 }
 
-export function CityMap({ city, cameraStats, highlightCameras, lines, points, labels, fit, livePulses, onCameraClick, className, ariaLabel = 'City road network map' }: Props) {
+/** Arrow glyph drawn on a canvas, so no sprite server is needed offline. */
+function arrowImage(): { width: number; height: number; data: Uint8Array } {
+  const size = 48
+  const c = document.createElement('canvas')
+  c.width = c.height = size
+  const ctx = c.getContext('2d') as CanvasRenderingContext2D
+  ctx.beginPath()
+  ctx.moveTo(24, 5)
+  ctx.lineTo(40, 40)
+  ctx.lineTo(24, 31)
+  ctx.lineTo(8, 40)
+  ctx.closePath()
+  ctx.lineJoin = 'round'
+  ctx.lineWidth = 5
+  ctx.strokeStyle = '#070a0e'
+  ctx.stroke()
+  ctx.fillStyle = '#eef3f8'
+  ctx.fill()
+  return { width: size, height: size, data: new Uint8Array(ctx.getImageData(0, 0, size, size).data.buffer) }
+}
+
+export function CityMap({ city, cameraStats, highlightCameras, lines, points, labels, arrows, heat, fit, livePulses, onCameraClick, className, ariaLabel = 'City road network map' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
   const [ready, setReady] = useState(false)
@@ -120,6 +149,22 @@ export function CityMap({ city, cameraStats, highlightCameras, lines, points, la
         },
       })
 
+      // Heat sits over the roads but under tracks and cameras. Radius grows geometrically with zoom so a
+      // camera's kernel covers roughly the same ground (~1.2 km, about one block to each neighbour) at every zoom level.
+      map.addSource('heat', { type: 'geojson', data: EMPTY })
+      map.addLayer({
+        id: 'heat',
+        type: 'heatmap',
+        source: 'heat',
+        paint: {
+          'heatmap-weight': ['get', 'w'],
+          'heatmap-radius': ['interpolate', ['exponential', 2], ['zoom'], 10, 8.5, 16, 530],
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 10, 1.3, 16, 2.2],
+          'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], ...HEAT_RAMP.flat()] as unknown as ExpressionSpecification,
+          'heatmap-opacity': 0.85,
+        },
+      })
+
       map.addSource('traj', { type: 'geojson', data: EMPTY })
       map.addLayer({
         id: 'traj',
@@ -162,6 +207,24 @@ export function CityMap({ city, cameraStats, highlightCameras, lines, points, la
           'circle-color': ['get', 'color'],
           'circle-stroke-color': ['get', 'stroke'],
           'circle-stroke-width': ['get', 'sw'],
+        },
+      })
+
+      map.addImage('dir-arrow', arrowImage(), { pixelRatio: 2 })
+      map.addSource('arrows', { type: 'geojson', data: EMPTY })
+      map.addLayer({
+        id: 'arrows',
+        type: 'symbol',
+        source: 'arrows',
+        layout: {
+          'icon-image': 'dir-arrow',
+          'icon-rotate': ['get', 'heading'],
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 15, 0.9],
+          // offset is applied in the rotated frame: "up" = along the heading, so the arrow sits ahead of the camera
+          'icon-offset': [0, -30],
         },
       })
 
@@ -280,6 +343,35 @@ export function CityMap({ city, cameraStats, highlightCameras, lines, points, la
     ;(map.getSource('pts') as GeoJSONSource | undefined)?.setData(data)
   }, [ready, points])
 
+  // ---- direction arrows
+  useEffect(() => {
+    const map = mapRef.current
+    if (!ready || !map) return
+    const data: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: (arrows ?? [])
+        .filter((a) => Number.isFinite(a.heading))
+        .map((a) => ({ type: 'Feature', properties: { id: a.id, heading: a.heading }, geometry: { type: 'Point', coordinates: a.lngLat } })),
+    }
+    ;(map.getSource('arrows') as GeoJSONSource | undefined)?.setData(data)
+  }, [ready, arrows])
+
+  // ---- heatmap
+  useEffect(() => {
+    const map = mapRef.current
+    if (!ready || !map) return
+    const data: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: (heat?.points ?? []).map((p) => ({
+        type: 'Feature',
+        properties: { id: p.id, w: Math.max(0, Math.min(1, p.weight)) },
+        geometry: { type: 'Point', coordinates: p.lngLat },
+      })),
+    }
+    ;(map.getSource('heat') as GeoJSONSource | undefined)?.setData(data)
+    map.setLayoutProperty('heat', 'visibility', heat ? 'visible' : 'none')
+  }, [ready, heat])
+
   // ---- HTML labels (no glyph server needed offline)
   useEffect(() => {
     const map = mapRef.current
@@ -328,6 +420,8 @@ export function CityMap({ city, cameraStats, highlightCameras, lines, points, la
     let last = 0
     const frame = (now: number) => {
       raf = 0
+      // The map can be removed (remount / hot reload) with a frame already queued.
+      if (mapRef.current !== map) return
       if (now - last < 33) {
         raf = requestAnimationFrame(frame)
         return

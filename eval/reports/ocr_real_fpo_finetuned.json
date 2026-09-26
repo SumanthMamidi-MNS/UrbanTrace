@@ -1,0 +1,144 @@
+{
+  "n_samples": 510,
+  "whole_plate_accuracy": 0.8098039215686275,
+  "char_accuracy": 0.9427450980392158,
+  "confidence_ece": 0.04082449749681949,
+  "per_condition": {
+    "State-wise_OLX": {
+      "n_samples": 170,
+      "whole_plate_accuracy": 0.788235294117647,
+      "char_accuracy": 0.9570588235294117
+    },
+    "google_images": {
+      "n_samples": 148,
+      "whole_plate_accuracy": 0.7297297297297297,
+      "char_accuracy": 0.9060810810810812
+    },
+    "video_images": {
+      "n_samples": 192,
+      "whole_plate_accuracy": 0.890625,
+      "char_accuracy": 0.9583333333333334
+    }
+  },
+  "group_by_plate": {
+    "n_unique_plates": 276,
+    "whole_plate_accuracy_per_plate_mean": 0.7716685992906436,
+    "char_accuracy_per_plate_mean": 0.9382752262004741,
+    "images_per_plate_min": 1,
+    "images_per_plate_max": 34,
+    "images_per_plate_mean": 1.8478260869565217
+  },
+  "error_sample": [
+    {
+      "image_path": "images/test_000002.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AP39GR3492",
+      "prediction": "AP39GR9492",
+      "confidence": 0.9789991661080006
+    },
+    {
+      "image_path": "images/test_000003.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AP31TP2282",
+      "prediction": "AP31TH_228",
+      "confidence": 0.23366374059499484
+    },
+    {
+      "image_path": "images/test_000007.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AP05CG6320",
+      "prediction": "AP51G_6630",
+      "confidence": 0.2769004716576222
+    },
+    {
+      "image_path": "images/test_000008.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AP31TV6847",
+      "prediction": "AP31TY6847",
+      "confidence": 0.6793524893526582
+    },
+    {
+      "image_path": "images/test_000013.jpg",
+      "condition": "State-wise_OLX",
+      "label": "AR11__8724",
+      "prediction": "AR11B__754",
+      "confidence": 0.2631304563234479
+    },
+    {
+      "image_path": "images/test_000025.jpg",
+      "condition": "State-wise_OLX",
+      "label": "BR33M_0001",
+      "prediction": "BR33N_0001",
+      "confidence": 0.4942803047769406
+    },
+    {
+      "image_path": "images/test_000026.jpg",
+      "condition": "State-wise_OLX",
+      "label": "BR01BD5042",
+      "prediction": "BR01BD5049",
+      "confidence": 0.81630164102238
+    },
+    {
+      "image_path": "images/test_000028.jpg",
+      "condition": "State-wise_OLX",
+      "label": "CG07R_2684",
+      "prediction": "CG07K_2644",
+      "confidence": 0.13561381041059956
+    },
+    {
+      "image_path": "images/test_000029.jpg",
+      "condition": "State-wise_OLX",
+      "label": "CG07MA2529",
+      "prediction": "GG07MA2529",
+      "confidence": 0.44507968785773017
+    },
+    {
+      "image_path": "images/test_000030.jpg",
+      "condition": "State-wise_OLX",
+      "label": "CG04FJ5834",
+      "prediction": "CG04FJ5894",
+      "confidence": 0.8694807193330619
+    },
+    {
+      "image_path": "images/test_000035.jpg",
+      "condition": "State-wise_OLX",
+      "label": "DL06CJ8404",
+      "prediction": "DL66CJ_844",
+      "confidence": 0.10294410877742828
+    },
+    {
+      "image_path": "images/test_000036.jpg",
+      "condition": "State-wise_OLX",
+      "label": "DL05CH7599",
+      "prediction": "DL55CH7599",
+      "confidence": 0.10236615959314406
+    },
+    {
+      "image_path": "images/test_000037.jpg",
+      "condition": "State-wise_OLX",
+      "label": "DL08CZ7230",
+      "prediction": "DL88CZ7330",
+      "confidence": 0.3544498502999179
+    },
+    {
+      "image_path": "images/test_000040.jpg",
+      "condition": "State-wise_OLX",
+      "label": "DL02CH8634",
+      "prediction": "DL22HH_834",
+      "confidence": 0.056845575718154163
+    },
+    {
+      "image_path": "images/test_000045.jpg",
+      "condition": "State-wise_OLX",
+      "label": "GJ01RA8370",
+      "prediction": "GJ01RA8376",
+      "confidence": 0.7231777633586087
+    }
+  ],
+  "dataset": "real",
+  "model_name": "best",
+  "model_path": "C:\\sutra-data\\ocr\\fpo\\runs\\2026-09-25_17-56-29\\best.onnx",
+  "csv": "C:\\sutra-data\\ocr\\real\\test\\labels.csv",
+  "description": "Fine-tuned fast-plate-ocr cct-s-v2-global-model: 60 epochs (best checkpoint selected on real VAL) on real TRAIN; evaluated once on the held-out real TEST split (510 images / 276 unique plates, split by plate string).",
+  "generated_at": "2026-09-25T12:56:45.844217+00:00"
+}

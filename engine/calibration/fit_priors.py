@@ -13,16 +13,23 @@ against held-out candidate pairs drawn from *that same* city.
 """
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
 
+from engine.association.gating import Gate, gate_candidates
 from engine.contracts.city import CityConfig
 from engine.contracts.events import DetectionEvent
 from engine.contracts.plate import RTO_ALPHABET, STATE_ALPHABET
 from engine.scoring.appearance_lr import AppearanceModel, fit_appearance_model
-from engine.scoring.kinematic_lr import KinematicModel, PairParams, fit_kinematic_model
+from engine.scoring.kinematic_lr import (
+    KinematicModel,
+    NegativeKinematicPriors,
+    PairParams,
+    fit_kinematic_model,
+    fit_negative_kinematic_priors,
+)
 from engine.scoring.plate_lr import PlatePriors
 from sim.city import generate_city
 from sim.corruption import CorruptionConfig
@@ -110,6 +117,33 @@ class FittedModels:
     appearance_model: AppearanceModel
 
 
+def fit_negative_kinematic_model(
+    kinematic_model: KinematicModel, train_events: list[DetectionEvent]
+) -> KinematicModel:
+    """Stage 2 of the kinematic fit -- the kinematic-defect fix
+    (docs/decisions.md): with p1 (`kinematic_model`) already fit, run the
+    SAME spatio-temporal gate it defines over the training split and hand
+    every gated candidate pair to `fit_negative_kinematic_priors`, which
+    keeps only the ones the ground truth says are a different vehicle.
+    That is p0's real sample space -- not a flat window (see
+    engine/scoring/kinematic_lr.py's module docstring, "THE NULL MODEL").
+
+    Lives here rather than inside `engine.scoring.kinematic_lr.
+    fit_kinematic_model` itself because it needs `engine.association.
+    gating`, which imports FROM kinematic_lr (`KinematicModel`,
+    `time_of_day_bucket`) -- importing it back there would be circular.
+    Also keeps `fit_kinematic_model`'s existing callers (eval/baselines.py,
+    eval/blocking_report.py, eval/gating_report.py, and several tests that
+    only need a plain p1 fit) from paying for an extra full gating pass they
+    never asked for."""
+    gate = Gate(model=kinematic_model)
+    gate_result = gate_candidates(train_events, gate)
+    neg_priors = fit_negative_kinematic_priors(
+        train_events, gate_result.candidates, kinematic_model
+    )
+    return replace(kinematic_model, neg_priors=neg_priors)
+
+
 def fit_all(train_dataset: GeneratedDataset) -> FittedModels:
     """Fit every scoring-channel model on one training dataset."""
     events = train_dataset.events
@@ -118,6 +152,7 @@ def fit_all(train_dataset: GeneratedDataset) -> FittedModels:
 
     plate_priors = fit_plate_priors(events)
     kinematic_model = fit_kinematic_model(events, train_dataset.city)
+    kinematic_model = fit_negative_kinematic_model(kinematic_model, events)
     appearance_model = fit_appearance_model(
         events, true_color_by_vehicle, true_type_by_vehicle, COLORS, VEHICLE_TYPES
     )
@@ -159,6 +194,7 @@ def save_fitted_models(models: FittedModels, out_dir: Path) -> None:
         encoding="utf-8",
     )
     kin = models.kinematic_model
+    neg = kin.neg_priors
     (out_dir / "kinematic_params.json").write_text(
         json.dumps(
             {
@@ -178,6 +214,27 @@ def save_fitted_models(models: FittedModels, out_dir: Path) -> None:
                     }
                     for k, v in kin.pair_params.items()
                 ],
+                "neg_priors": None
+                if neg is None
+                else {
+                    "pair_params": [
+                        {
+                            "cam_i": k[0],
+                            "cam_j": k[1],
+                            "tod": k[2],
+                            "mu": v.mu,
+                            "sigma": v.sigma,
+                            "n_obs": v.n_obs,
+                        }
+                        for k, v in neg.pair_params.items()
+                    ],
+                    "tod_pooled": {
+                        tod: {"mu": v.mu, "sigma": v.sigma, "n_obs": v.n_obs}
+                        for tod, v in neg.tod_pooled.items()
+                    },
+                    "global_mu_r": neg.global_mu_r,
+                    "global_sigma_r": neg.global_sigma_r,
+                },
             },
             indent=2,
         ),
@@ -212,6 +269,23 @@ def load_fitted_models(in_dir: Path, city: CityConfig) -> FittedModels:
         )
         for p in kj["pair_params"]
     }
+    neg_json = kj.get("neg_priors")
+    neg_priors = None
+    if neg_json is not None:
+        neg_priors = NegativeKinematicPriors(
+            pair_params={
+                (p["cam_i"], p["cam_j"], p["tod"]): PairParams(
+                    mu=p["mu"], sigma=p["sigma"], n_obs=p["n_obs"]
+                )
+                for p in neg_json["pair_params"]
+            },
+            tod_pooled={
+                tod: PairParams(mu=v["mu"], sigma=v["sigma"], n_obs=v["n_obs"])
+                for tod, v in neg_json["tod_pooled"].items()
+            },
+            global_mu_r=neg_json["global_mu_r"],
+            global_sigma_r=neg_json["global_sigma_r"],
+        )
     kinematic_model = KinematicModel(
         city=city,
         pair_params=pair_params,
@@ -220,6 +294,7 @@ def load_fitted_models(in_dir: Path, city: CityConfig) -> FittedModels:
         default_sigma=kj["default_sigma"],
         dt_min=kj["dt_min"],
         dt_max=kj["dt_max"],
+        neg_priors=neg_priors,
     )
 
     return FittedModels(

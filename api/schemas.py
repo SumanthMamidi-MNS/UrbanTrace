@@ -98,6 +98,11 @@ class PathPoint(BaseModel):
     lat: float
     lon: float
     timestamp: str
+    # Bearing to the NEXT point, 0 = north, clockwise; null on the last
+    # point (Contract v2). Default None so callers that build a PathPoint
+    # without a meaningful "next" (e.g. clone-alert evidence points, which
+    # are not a full trajectory path) don't have to compute one.
+    heading_deg: float | None = None
 
 
 class PlateConsensus(BaseModel):
@@ -111,6 +116,10 @@ class TrajectoryDetail(TrajectorySummary):
     links: list[LinkEvidence]
     path: list[PathPoint]
     consensus: PlateConsensus
+    # Bearing first->last camera, and its 8-point compass label (Contract
+    # v2). Both null for a single-event trajectory (no direction exists).
+    overall_heading_deg: float | None = None
+    direction_label: str | None = None
 
 
 class SearchHit(BaseModel):
@@ -119,8 +128,9 @@ class SearchHit(BaseModel):
     matched_plate: str
 
 
-AlertType = Literal["clone", "impossible_travel", "anomaly"]
+AlertType = Literal["clone", "impossible_travel", "anomaly", "watchlist"]
 AlertSeverity = Literal["high", "medium", "low"]
+WatchlistMatchedOn = Literal["single_read", "trajectory_consensus"]
 
 
 class AlertEvidence(BaseModel):
@@ -129,6 +139,11 @@ class AlertEvidence(BaseModel):
     min_required_s: float | None = None
     appearance_distance: float | None = None
     points: list[PathPoint] | None = None
+    # watchlist-only fields (Contract v2)
+    watchlist_entry_id: str | None = None
+    pattern: str | None = None
+    match_probability: float | None = None
+    matched_on: WatchlistMatchedOn | None = None
 
 
 class Alert(BaseModel):
@@ -190,6 +205,62 @@ class Corridor(BaseModel):
     p90_travel_s: float
     free_flow_s: float
     congestion_index: float
+    distance_m: float
+    avg_speed_kmh: float
+    p85_speed_kmh: float
+    free_flow_speed_kmh: float
+
+
+class WatchlistEntry(BaseModel):
+    entry_id: str
+    pattern: str
+    canonical_patterns: list[str]
+    reason: str
+    created_at: str
+    active: bool
+    hits: int
+
+
+class WatchlistCreate(BaseModel):
+    pattern: str
+    reason: str
+
+
+class WatchlistHit(BaseModel):
+    hit_id: str
+    entry_id: str
+    pattern: str
+    event_id: str
+    trajectory_id: str | None
+    camera_id: str
+    timestamp: str
+    probability: float
+    matched_on: WatchlistMatchedOn
+    plate_read: str
+
+
+class HeatPoint(BaseModel):
+    camera_id: str
+    lat: float
+    lon: float
+    weight: float
+
+
+HeatmapMetric = Literal["density", "speed"]
+
+
+class Heatmap(BaseModel):
+    at: str
+    window_minutes: int
+    metric: HeatmapMetric
+    points: list[HeatPoint]
+
+
+class FlowBucket(BaseModel):
+    bucket_start: str
+    events: int
+    active_trajectories: int
+    mean_speed_kmh: float | None
 
 
 class EvalReports(BaseModel):

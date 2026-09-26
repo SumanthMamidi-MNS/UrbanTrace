@@ -5,7 +5,7 @@ import { useHealth, useReplay } from '../api/hooks'
 import { USE_MOCK } from '../config'
 import { liveStore, useLive } from '../hooks/liveStore'
 import { fmtDateTime, fmtNum } from '../lib/format'
-import { IconAlert, IconChart, IconLive, IconPause, IconPlay, IconReset, IconResults, IconRoute, IconSearch } from './icons'
+import { IconAlert, IconChart, IconLive, IconPause, IconPlay, IconReset, IconResults, IconRoute, IconSearch, IconWatch } from './icons'
 import { Button, cx, Segmented } from './ui'
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
   { to: '/search', label: 'Search', icon: IconSearch },
   { to: '/analytics', label: 'Analytics', icon: IconChart },
   { to: '/alerts', label: 'Alerts', icon: IconAlert },
+  { to: '/watchlist', label: 'Watchlist', icon: IconWatch },
   { to: '/results', label: 'Results', icon: IconResults },
 ]
 
@@ -30,9 +31,10 @@ function AlertNavBadge() {
   }, [onAlertsPage])
   useEffect(
     () =>
-      liveStore.onAlert(() => {
+      liveStore.onAlert((a) => {
         if (!onAlertsRef.current) setUnseen((n) => n + 1)
         void qc.invalidateQueries({ queryKey: ['alerts'] })
+        if (a.type === 'watchlist') void qc.invalidateQueries({ queryKey: ['watchlist'] })
         void qc.invalidateQueries({ queryKey: ['analytics', 'summary'] })
       }),
     [qc],

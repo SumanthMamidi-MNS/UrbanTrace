@@ -1,0 +1,75 @@
+{
+  "n_samples": 5000,
+  "whole_plate_accuracy": 0.9506,
+  "char_accuracy": 0.9910399999999999,
+  "temperature": 1.1846872568130493,
+  "confidence_ece_before_calibration": 0.015205193990652942,
+  "confidence_ece_after_calibration": 0.02140052425855118,
+  "per_condition": {
+    "clean": {
+      "n_samples": 767,
+      "whole_plate_accuracy": 0.9960886571056062,
+      "char_accuracy": 0.999348109517601
+    },
+    "dirt_damage": {
+      "n_samples": 432,
+      "whole_plate_accuracy": 0.8379629629629629,
+      "char_accuracy": 0.9745370370370371
+    },
+    "gaussian_blur": {
+      "n_samples": 367,
+      "whole_plate_accuracy": 0.9863760217983651,
+      "char_accuracy": 0.9983651226158038
+    },
+    "glare": {
+      "n_samples": 357,
+      "whole_plate_accuracy": 0.9719887955182073,
+      "char_accuracy": 0.9952380952380953
+    },
+    "jpeg": {
+      "n_samples": 345,
+      "whole_plate_accuracy": 0.9971014492753624,
+      "char_accuracy": 0.9991304347826087
+    },
+    "low_light": {
+      "n_samples": 431,
+      "whole_plate_accuracy": 0.9675174013921114,
+      "char_accuracy": 0.9962877030162413
+    },
+    "low_res": {
+      "n_samples": 342,
+      "whole_plate_accuracy": 0.97953216374269,
+      "char_accuracy": 0.9964912280701754
+    },
+    "motion_blur": {
+      "n_samples": 419,
+      "whole_plate_accuracy": 0.9809069212410502,
+      "char_accuracy": 0.9957040572792363
+    },
+    "noise": {
+      "n_samples": 388,
+      "whole_plate_accuracy": 0.9845360824742269,
+      "char_accuracy": 0.9969072164948453
+    },
+    "occlusion": {
+      "n_samples": 400,
+      "whole_plate_accuracy": 0.7625,
+      "char_accuracy": 0.9537500000000001
+    },
+    "perspective": {
+      "n_samples": 419,
+      "whole_plate_accuracy": 0.9379474940334129,
+      "char_accuracy": 0.9854415274463006
+    },
+    "rain": {
+      "n_samples": 333,
+      "whole_plate_accuracy": 0.993993993993994,
+      "char_accuracy": 0.9990990990990992
+    }
+  },
+  "dataset": "synthetic",
+  "description": "SYNTHETIC development plate OCR evaluation -- 5000 samples from C:\\sutra-data\\ocr\\synth\\test\\labels.csv. This is a development number, NOT the PRD's real-data accuracy claim.",
+  "checkpoint": "C:\\sutra-data\\ocr\\runs\\synth\\best.pt",
+  "csv": "C:\\sutra-data\\ocr\\synth\\test\\labels.csv",
+  "generated_at": "2026-09-22T03:47:12.787169+00:00"
+}

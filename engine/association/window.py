@@ -141,7 +141,7 @@ def _solve_one_window(
     fusion_model: FusionModel,
     entry_exit: EntryExitCosts,
     city: CityConfig,
-    link_cost_bias: float = 0.0,
+    link_bias: float = 0.0,
 ) -> tuple[list[list[str]], dict[tuple[str, str], LinkEvidence], WindowStats]:
     """Gate + score + min-cost-flow solve a single window's events. Returns
     (event_id paths, link evidence by (from,to) pair actually USED, stats).
@@ -169,10 +169,22 @@ def _solve_one_window(
     BEFORE dominance pruning) rather than a fixed constant -- see
     engine.scoring.fusion module docstring's "THE PER-SUCCESSOR FIX".
 
-    `link_cost_bias` (default 0.0, i.e. no change from the corrected
-    formula) adds a constant to every link arc's cost -- a sensitivity-sweep
-    knob only (docs/decisions.md's beta sweep on TRAIN-seed data), never
-    set away from 0.0 in production."""
+    `link_bias` (beta, in nats; default 0.0, i.e. no change from the
+    corrected formula) is SUBTRACTED from every link arc's cost -- link arc
+    cost is `-s(i,j) + exit_cost(i) + entry_cost(j) - beta`, so the solver
+    links iff `s(i,j) > -beta` instead of the plain Bayesian `s(i,j) > 0`
+    (mincostflow.py's "THE ARC-COST DERIVATION" is the beta=0 case). A
+    positive beta makes linking EASIER (recovers exactly the kind of
+    weak-plate-evidence true link that a correct kinematic model no longer
+    clears at rush-hour density -- see docs/decisions.md's beta sweep on a
+    TRAIN-seed day, `eval/calibrate_link_bias.py`); a negative beta makes it
+    stricter. `prune_dominated_arcs`'s bypass comparison is UNCHANGED by
+    beta (the bypass literally routes through the exit/entry arcs, which
+    beta never touches), so pruning stays the exact `s(i,j) <= -beta`
+    condition at any beta -- see that function's docstring and
+    tests/test_pruning_and_decomposition.py's beta-parametrized cases.
+    Default 0.0 is a sensitivity-sweep/calibration knob only, never set away
+    from 0.0 except via a calibrated default in eval/run_pipeline.py."""
     gate_result = gate_candidates(window_events, gate)
     events_by_id = {e.event_id: e for e in window_events}
     index_of = {e.event_id: i for i, e in enumerate(window_events)}
@@ -233,7 +245,7 @@ def _solve_one_window(
                 -float(totals[k])
                 + exit_cost_of[window_events[batch_pred_idx[k]].event_id]
                 + entry_cost_of[window_events[batch_succ_idx[k]].event_id]
-                + link_cost_bias,
+                - link_bias,
             )
             for k in range(n_arcs_before)
         ]
@@ -312,7 +324,7 @@ def solve_windowed(
     window_size_s: float = DEFAULT_WINDOW_SIZE_S,
     step_s: float = DEFAULT_WINDOW_STEP_S,
     on_window: Callable[[int, int, WindowStats, float], None] | None = None,
-    link_cost_bias: float = 0.0,
+    link_bias: float = 0.0,
 ) -> WindowedSolveResult:
     """Solve the full event stream window-by-window, stitching open tracks
     across window boundaries by carried event_id (see module docstring).
@@ -321,9 +333,11 @@ def solve_windowed(
     `(window_index, n_windows, stats, elapsed_s)` -- purely for progress
     reporting (eval.run_pipeline uses it); it never affects the result.
 
-    `link_cost_bias`: forwarded unchanged to `_solve_one_window` -- see its
-    docstring. Sensitivity-sweep knob only, default 0.0 leaves production
-    behaviour untouched."""
+    `link_bias` (beta, in nats): forwarded unchanged to `_solve_one_window`
+    -- see its docstring. Default 0.0 leaves production behaviour untouched;
+    a nonzero value is only ever set from a value calibrated by
+    `eval/calibrate_link_bias.py` on a TRAINING day, never on the evaluated
+    dataset (data/run1)."""
     events_sorted = sorted(events, key=lambda e: e.timestamp)
     if not events_sorted:
         return WindowedSolveResult(trajectories=[], n_windows=0)
@@ -367,7 +381,7 @@ def solve_windowed(
             fusion_model,
             entry_exit,
             city,
-            link_cost_bias=link_cost_bias,
+            link_bias=link_bias,
         )
         if on_window is not None:
             on_window(window_i, len(windows), stats, time.perf_counter() - t_window_start)

@@ -22,6 +22,7 @@ etc. cover backfill.
 from __future__ import annotations
 
 import asyncio
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -29,7 +30,12 @@ from fastapi import WebSocket
 
 from api import schemas
 from api.builders import alert_row_to_schema, event_row_to_summary
-from api.db import AlertRow, EventRow
+from api.db import AlertRow, EventRow, WatchlistEntryRow, WatchlistHitRow
+from engine.alerts.watchlist import (
+    MATCH_THRESHOLD,
+    single_read_match_probability,
+    trajectory_consensus_match_probability,
+)
 
 DEFAULT_SPEED = 60.0
 DEFAULT_TICK_INTERVAL_S = 0.5
@@ -99,6 +105,9 @@ class ReplayEngine:
         traj_states: dict[str, _TrajRevealState],
         alert_entries: list[_AlertEntry],
         tick_interval_s: float = DEFAULT_TICK_INTERVAL_S,
+        session_factory=None,
+        events_by_id: dict[str, EventRow] | None = None,
+        watchlist_alerted_pairs: set[tuple[str, str]] | None = None,
     ) -> None:
         self.t_min = t_min
         self.t_max = t_max if t_max is not None and t_max >= t_min else t_min
@@ -114,6 +123,15 @@ class ReplayEngine:
         self._last_clock_emit = -1.0
         self.manager = ConnectionManager()
         self._task: asyncio.Task | None = None
+        # Watchlist (docs/api-contract.md Contract v2): a session factory to
+        # read active entries / write hits+alerts live, the full EventRow
+        # per event_id (posteriors needed for matching -- `_events` above
+        # only needs (timestamp, row) pairs for the reveal cursor), and the
+        # (entry_id, trajectory_id) pairs already alerted so each pair only
+        # ever alerts once ("later matches are recorded as hits").
+        self._session_factory = session_factory
+        self._events_by_id = events_by_id or {}
+        self._watchlist_alerted: set[tuple[str, str]] = watchlist_alerted_pairs or set()
 
     # -- control -----------------------------------------------------
     def start(self, speed: float | None = None) -> None:
@@ -163,6 +181,9 @@ class ReplayEngine:
                 await self.manager.broadcast({"type": "clock", "data": self.state_dict()})
 
     async def _reveal_due(self) -> None:
+        newly_revealed_events: list[EventRow] = []
+        updated_traj_ids: set[str] = set()
+
         while (
             self._event_idx < len(self._events)
             and self._events[self._event_idx][0] <= self.sim_time
@@ -171,11 +192,13 @@ class ReplayEngine:
             self._event_idx += 1
             summary = event_row_to_summary(row)
             await self.manager.broadcast({"type": "event", "data": summary.model_dump()})
+            newly_revealed_events.append(row)
             traj_id = row.trajectory_id
             if traj_id and traj_id in self._traj_states:
                 state = self._traj_states[traj_id]
                 if state.revealed < len(state.ordered_events):
                     state.revealed += 1
+                    updated_traj_ids.add(traj_id)
                     partial = self._partial_trajectory_summary(traj_id)
                     if partial is not None:
                         data = partial.model_dump()
@@ -188,6 +211,158 @@ class ReplayEngine:
             entry = self._alert_entries[self._alert_idx]
             self._alert_idx += 1
             await self.manager.broadcast({"type": "alert", "data": entry.schema.model_dump()})
+
+        if newly_revealed_events or updated_traj_ids:
+            await self._check_watchlist(newly_revealed_events, updated_traj_ids)
+
+    # -- watchlist (docs/api-contract.md Contract v2) ------------------
+    async def _check_watchlist(
+        self, new_events: list[EventRow], updated_traj_ids: set[str]
+    ) -> None:
+        """Evaluate every ACTIVE watchlist entry against (a) each newly
+        revealed single read and (b) the growing trajectory consensus of
+        every trajectory that just gained a revealed event. Entries are
+        re-queried on every call (not cached at startup) so a `POST
+        /api/watchlist` made mid-replay "take[s] effect for subsequent
+        reads" (the contract's own wording) on the very next tick."""
+        if self._session_factory is None:
+            return
+        alerts_to_broadcast: list[schemas.Alert] = []
+        with self._session_factory() as session:
+            entries = (
+                session.query(WatchlistEntryRow)
+                .filter(WatchlistEntryRow.active.is_(True))
+                .all()
+            )
+            if not entries:
+                return
+
+            for row in new_events:
+                for wl in entries:
+                    prob = single_read_match_probability(row, wl.canonical_patterns)
+                    if prob >= MATCH_THRESHOLD:
+                        alert = self._record_watchlist_match(
+                            session,
+                            wl,
+                            event_id=row.event_id,
+                            trajectory_id=row.trajectory_id,
+                            camera_id=row.camera_id,
+                            timestamp=row.timestamp,
+                            probability=prob,
+                            matched_on="single_read",
+                            plate_read=row.plate_argmax,
+                        )
+                        if alert is not None:
+                            alerts_to_broadcast.append(alert)
+
+            for traj_id in updated_traj_ids:
+                state = self._traj_states.get(traj_id)
+                if state is None or state.revealed == 0:
+                    continue
+                revealed = state.ordered_events[: state.revealed]
+                rows = [
+                    self._events_by_id[eid] for eid, _, _ in revealed if eid in self._events_by_id
+                ]
+                if not rows:
+                    continue
+                latest_row = rows[-1]
+                for wl in entries:
+                    prob = trajectory_consensus_match_probability(rows, wl.canonical_patterns)
+                    if prob >= MATCH_THRESHOLD:
+                        alert = self._record_watchlist_match(
+                            session,
+                            wl,
+                            event_id=latest_row.event_id,
+                            trajectory_id=traj_id,
+                            camera_id=latest_row.camera_id,
+                            timestamp=latest_row.timestamp,
+                            probability=prob,
+                            matched_on="trajectory_consensus",
+                            plate_read=latest_row.plate_argmax,
+                        )
+                        if alert is not None:
+                            alerts_to_broadcast.append(alert)
+
+            session.commit()
+
+        for alert in alerts_to_broadcast:
+            await self.manager.broadcast({"type": "alert", "data": alert.model_dump()})
+
+    def _record_watchlist_match(
+        self,
+        session,
+        entry: WatchlistEntryRow,
+        event_id: str,
+        trajectory_id: str | None,
+        camera_id: str,
+        timestamp: datetime,
+        probability: float,
+        matched_on: str,
+        plate_read: str,
+    ) -> schemas.Alert | None:
+        """Always records a `WatchlistHitRow`. The FIRST match for a given
+        (entry_id, trajectory_id) pair also creates an `AlertRow`
+        (type="watchlist") and is returned for broadcast; every later match
+        of that same pair is "recorded as a hit" only, per the contract."""
+        session.add(
+            WatchlistHitRow(
+                hit_id=f"wlhit_{uuid.uuid4().hex[:12]}",
+                entry_id=entry.entry_id,
+                pattern=entry.pattern,
+                event_id=event_id,
+                trajectory_id=trajectory_id,
+                camera_id=camera_id,
+                timestamp=timestamp,
+                probability=probability,
+                matched_on=matched_on,
+                plate_read=plate_read,
+            )
+        )
+        entry.hits += 1
+
+        if trajectory_id is None:
+            return None
+        pair = (entry.entry_id, trajectory_id)
+        if pair in self._watchlist_alerted:
+            return None
+        self._watchlist_alerted.add(pair)
+
+        # NOTE: "trajectory_consensus" means THIS event's own single read did
+        # not clear MATCH_THRESHOLD by itself -- not necessarily that it was
+        # a character-for-character misread. In practice it usually is one
+        # (the differentiator scenario), but it can also just be a
+        # correctly-argmaxed read that was too LOW-CONFIDENCE on its own to
+        # clear the threshold, with the earlier reads' agreement supplying
+        # the rest of the certainty -- verified against the real dataset
+        # (docs/api-contract.md Contract v2 real-database check), so the
+        # summary avoids overclaiming "misread" specifically.
+        consensus_note = (
+            "matched via the fused multi-camera trajectory consensus (this camera's own "
+            "single read did not clear the match threshold by itself)"
+            if matched_on == "trajectory_consensus"
+            else "matched on this camera's own single read"
+        )
+        summary = (
+            f"Watchlisted plate {plate_read} ({entry.reason}) {consensus_note} at camera "
+            f"{camera_id}, probability {probability:.2f}."
+        )
+        alert_row = AlertRow(
+            alert_id=f"alert_wl_{uuid.uuid4().hex[:12]}",
+            type="watchlist",
+            severity="high",
+            created_at=self.sim_time,
+            plate=plate_read,
+            trajectory_ids=[trajectory_id],
+            summary=summary,
+            evidence={
+                "watchlist_entry_id": entry.entry_id,
+                "pattern": entry.pattern,
+                "match_probability": probability,
+                "matched_on": matched_on,
+            },
+        )
+        session.add(alert_row)
+        return alert_row_to_schema(alert_row)
 
     def _partial_trajectory_summary(self, traj_id: str) -> schemas.TrajectorySummary | None:
         state = self._traj_states.get(traj_id)
@@ -254,6 +429,7 @@ def build_replay_engine(session_factory) -> ReplayEngine:
         alert_rows = session.query(AlertRow).all()
         alert_entries: list[_AlertEntry] = []
         traj_end_time = {row.trajectory_id: row.end_time for row in traj_rows}
+        watchlist_alerted_pairs: set[tuple[str, str]] = set()
         for row in alert_rows:
             reveal_at = row.created_at
             points = (row.evidence or {}).get("points")
@@ -268,6 +444,12 @@ def build_replay_engine(session_factory) -> ReplayEngine:
                     row_id=row.alert_id, reveal_at=reveal_at, schema=alert_row_to_schema(row)
                 )
             )
+            if row.type == "watchlist":
+                wl_entry_id = (row.evidence or {}).get("watchlist_entry_id")
+                if wl_entry_id and row.trajectory_ids:
+                    watchlist_alerted_pairs.add((wl_entry_id, row.trajectory_ids[0]))
+
+        events_by_id = {r.event_id: r for r in event_rows}
 
     return ReplayEngine(
         t_min=t_min,
@@ -275,4 +457,7 @@ def build_replay_engine(session_factory) -> ReplayEngine:
         events=events,
         traj_states=traj_states,
         alert_entries=alert_entries,
+        session_factory=session_factory,
+        events_by_id=events_by_id,
+        watchlist_alerted_pairs=watchlist_alerted_pairs,
     )

@@ -57,6 +57,7 @@ from engine.decode.clone_detect import Alert as EngineAlert
 from engine.decode.clone_detect import detect_clones
 from engine.decode.consensus import Consensus, decode_trajectory
 from engine.scoring.fusion import FusionModel
+from sim.congestion import CongestionConfig, congestion_config_from_dict
 from sim.generate import generate_dataset_with_city
 
 app = typer.Typer(add_completion=False)
@@ -108,6 +109,20 @@ def _read_config(data_dir: Path) -> dict:
     return {}
 
 
+def _congestion_from_config(config: dict) -> tuple[bool, CongestionConfig | None]:
+    """Read the target dataset's own `congestion` setting (and, if recorded,
+    its full `CongestionConfig`) from config.json, so the training split
+    used to fit priors is generated under the SAME traffic regime the target
+    dataset was -- matches `eval/run_pipeline.py`'s `_congestion_from_config`.
+    Defaults to False when the key is absent (pre-congestion-knob datasets)."""
+    congestion = bool(config.get("congestion", False))
+    if not congestion:
+        return False, None
+    raw_cfg = config.get("congestion_config")
+    congestion_config = congestion_config_from_dict(raw_cfg) if raw_cfg else CongestionConfig()
+    return True, congestion_config
+
+
 def fit_training_models(
     city: CityConfig,
     data_dir: Path,
@@ -125,8 +140,15 @@ def fit_training_models(
     data_seed = int(config.get("seed", 0))
     hours = int(config.get("hours") or _span_hours(events))
     train_seed = data_seed + train_seed_offset
+    congestion, congestion_config = _congestion_from_config(config)
     train_ds = generate_dataset_with_city(
-        city, n_vehicles=train_vehicles, hours=hours, seed=train_seed, clone_fraction=0.0
+        city,
+        n_vehicles=train_vehicles,
+        hours=hours,
+        seed=train_seed,
+        clone_fraction=0.0,
+        congestion=congestion,
+        congestion_config=congestion_config,
     )
     return fit_all(train_ds)
 

@@ -1,5 +1,5 @@
 /**
- * Types mirroring docs/api-contract.md EXACTLY (frozen contract).
+ * Types mirroring docs/api-contract.md EXACTLY (frozen contract, incl. "Contract v2 additions").
  * Do not add, rename or re-type fields here without the lead changing the contract first.
  */
 
@@ -62,7 +62,15 @@ export type TrajectorySummary = {
   has_alert: boolean
 }
 
-export type PathPoint = { event_id: string; camera_id: string; lat: number; lon: number; timestamp: string }
+export type PathPoint = {
+  event_id: string
+  camera_id: string
+  lat: number
+  lon: number
+  timestamp: string
+  /** v2: bearing to the NEXT point, 0 = north, clockwise; null on the last point */
+  heading_deg: number | null
+}
 
 export type PlateConsensus = {
   /** 10 entries, fused posterior top <= 5 per slot */
@@ -77,11 +85,16 @@ export type TrajectoryDetail = TrajectorySummary & {
   links: LinkEvidence[]
   path: PathPoint[]
   consensus: PlateConsensus
+  /** v2: first -> last camera bearing */
+  overall_heading_deg: number | null
+  /** v2: N / NE / E / SE / S / SW / W / NW */
+  direction_label: string | null
 }
 
 export type SearchHit = { trajectory: TrajectorySummary; probability: number; matched_plate: string }
 
-export type AlertType = 'clone' | 'impossible_travel' | 'anomaly'
+export type AlertType = 'clone' | 'impossible_travel' | 'anomaly' | 'watchlist'
+export type WatchlistMatchedOn = 'single_read' | 'trajectory_consensus'
 export type AlertSeverity = 'high' | 'medium' | 'low'
 
 export type Alert = {
@@ -99,6 +112,11 @@ export type Alert = {
     min_required_s?: number
     appearance_distance?: number
     points?: PathPoint[]
+    // v2 watchlist evidence
+    watchlist_entry_id?: string
+    pattern?: string
+    match_probability?: number
+    matched_on?: WatchlistMatchedOn
   }
 }
 
@@ -131,7 +149,49 @@ export type Corridor = {
   p90_travel_s: number
   free_flow_s: number
   congestion_index: number
+  // v2 speeds: road-graph shortest-path distance / observed travel time; links above v_max excluded
+  distance_m: number
+  avg_speed_kmh: number
+  p85_speed_kmh: number
+  free_flow_speed_kmh: number
 }
+
+// ---- v2: watchlist, heatmap, flow trend ----
+
+export type WatchlistEntry = {
+  entry_id: string
+  /** as typed by the operator, same grammar as /api/search */
+  pattern: string
+  /** grammar-consistent 10-slot forms it expands to */
+  canonical_patterns: string[]
+  reason: string
+  created_at: string
+  active: boolean
+  hits: number
+}
+
+export type WatchlistCreate = { pattern: string; reason: string }
+
+export type WatchlistHit = {
+  hit_id: string
+  entry_id: string
+  pattern: string
+  event_id: string
+  trajectory_id: string | null
+  camera_id: string
+  timestamp: string
+  /** P(plate matches pattern | evidence) */
+  probability: number
+  matched_on: WatchlistMatchedOn
+  /** what this camera actually read (plate_argmax) */
+  plate_read: string
+}
+
+export type HeatMetric = 'density' | 'speed'
+export type HeatPoint = { camera_id: string; lat: number; lon: number; weight: number }
+export type Heatmap = { at: string; window_minutes: number; metric: HeatMetric; points: HeatPoint[] }
+
+export type FlowBucket = { bucket_start: string; events: number; active_trajectories: number; mean_speed_kmh: number | null }
 
 export type EvalReports = { reports: Record<string, unknown> }
 
@@ -166,6 +226,9 @@ export type SearchQuery = {
 export type VolumesQuery = { bucket_minutes?: number; camera_id?: string }
 export type CorridorsQuery = { limit?: number }
 export type AlertsQuery = { type?: AlertType; limit?: number }
+export type WatchlistHitsQuery = { entry_id?: string; limit?: number }
+export type HeatmapQuery = { at?: string; window_minutes?: number; metric?: HeatMetric }
+export type FlowTrendQuery = { bucket_minutes?: number }
 
 // ---- WebSocket /ws/live ----
 

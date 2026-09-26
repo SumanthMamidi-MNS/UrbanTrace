@@ -108,6 +108,48 @@ Index("ix_alerts_type", AlertRow.type)
 Index("ix_alerts_created_at", AlertRow.created_at)
 
 
+class WatchlistEntryRow(Base):
+    """A blacklisted-plate pattern (docs/api-contract.md Contract v2,
+    `WatchlistEntry`). `canonical_patterns` is precomputed at creation time
+    by `api.plate_grammar.enumerate_canonical_forms` (the same grammar
+    `/api/search` uses) so matching never has to re-parse `pattern` live."""
+
+    __tablename__ = "watchlist_entries"
+
+    entry_id: Mapped[str] = mapped_column(String, primary_key=True)
+    pattern: Mapped[str] = mapped_column(String)
+    canonical_patterns: Mapped[list] = mapped_column(JSON)
+    reason: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    hits: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class WatchlistHitRow(Base):
+    """One probabilistic match of a watchlist entry against a read
+    (docs/api-contract.md Contract v2, `WatchlistHit`). Written on EVERY
+    match >= `engine.alerts.watchlist.MATCH_THRESHOLD`; the first hit for a
+    given (entry_id, trajectory_id) pair also creates an `AlertRow`
+    (type="watchlist") -- see `api/replay.py`."""
+
+    __tablename__ = "watchlist_hits"
+
+    hit_id: Mapped[str] = mapped_column(String, primary_key=True)
+    entry_id: Mapped[str] = mapped_column(String)
+    pattern: Mapped[str] = mapped_column(String)
+    event_id: Mapped[str] = mapped_column(String)
+    trajectory_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    camera_id: Mapped[str] = mapped_column(String)
+    timestamp: Mapped[dt.datetime] = mapped_column(DateTime)
+    probability: Mapped[float] = mapped_column(Float)
+    matched_on: Mapped[str] = mapped_column(String)
+    plate_read: Mapped[str] = mapped_column(String)
+
+
+Index("ix_watchlist_hits_entry_id", WatchlistHitRow.entry_id)
+Index("ix_watchlist_hits_timestamp", WatchlistHitRow.timestamp)
+
+
 class MetaRow(Base):
     """Small key-value table for dataset-level facts computed once at
     ingest time: dataset name, the full city graph (nodes/edges/cameras),

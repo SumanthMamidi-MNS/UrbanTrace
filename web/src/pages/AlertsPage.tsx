@@ -5,8 +5,9 @@ import { api } from '../api/client'
 import { qk, useAlerts, useCity } from '../api/hooks'
 import type { Alert, AlertType, PathPoint, TrajectoryDetail } from '../api/types'
 import { CityMap, type MapLabel, type MapLine, type MapPoint } from '../components/CityMap'
-import { alertTypeLabel, Button, cx, EmptyState, ErrorState, Loading, Panel, Plate, Segmented, SeverityBadge, Swatch } from '../components/ui'
-import { fmtDateTime, fmtDistance, fmtDuration, fmtNum, fmtTime } from '../lib/format'
+import { alertTypeLabel, AlertTypeTag, Button, cx, EmptyState, ErrorState, Loading, Panel, Plate, Segmented, SeverityBadge, Swatch, WatchlistBadge } from '../components/ui'
+import { MatchedOnTag, PatternReadChars, WatchlistEvidence } from '../components/Watchlist'
+import { fmtDateTime, fmtDistance, fmtDuration, fmtNum, fmtPct, fmtTime } from '../lib/format'
 import { getRouter, haversineM, type LngLat } from '../lib/geo'
 import { formatPlate } from '../lib/plate'
 
@@ -15,6 +16,7 @@ const TYPE_OPTS: { value: AlertType | 'all'; label: string }[] = [
   { value: 'clone', label: 'Clone' },
   { value: 'impossible_travel', label: 'Impossible' },
   { value: 'anomaly', label: 'Anomaly' },
+  { value: 'watchlist', label: 'Watchlist' },
 ]
 
 const fin = (x: number | undefined): x is number => x !== undefined && x !== null && Number.isFinite(x)
@@ -188,6 +190,8 @@ function AlertDetail({ alert }: { alert: Alert }) {
   const fitCoords = useMemo<LngLat[]>(() => points.map((p) => [p.lon, p.lat]), [points])
   const straight = pa && pb ? haversineM(pa.lat, pa.lon, pb.lat, pb.lon) : NaN
 
+  if (alert.type === 'watchlist') return <WatchlistAlertDetail alert={alert} traj={trajData[0]} trajLoading={trajs[0]?.isLoading ?? false} camName={camName} />
+
   return (
     <div className="flex flex-col gap-3 p-3">
       <div className={cx('rounded border bg-ink-850 px-3 py-2.5', alert.type === 'anomaly' ? 'border-ink-700' : 'border-alert-dim')}>
@@ -265,6 +269,107 @@ function AlertDetail({ alert }: { alert: Alert }) {
   )
 }
 
+// ------------------------------------------------------------------ watchlist detail
+
+function WatchlistAlertDetail({ alert, traj, trajLoading, camName }: { alert: Alert; traj?: TrajectoryDetail; trajLoading: boolean; camName: Map<string, string> }) {
+  const city = useCity()
+  const points = useMemo(() => alert.evidence.points ?? [], [alert])
+  const trigger = points[points.length - 1]
+  const pattern = alert.evidence.pattern
+  const path = traj?.path ?? points
+
+  const layers = useMemo(() => {
+    const lines: MapLine[] = []
+    const pts: MapPoint[] = []
+    const labels: MapLabel[] = []
+    if (!city.data) return { lines, pts, labels }
+    const seq = path.map((p) => p.camera_id)
+    if (seq.length >= 2) lines.push({ id: 'path', coords: getRouter(city.data).line(seq), color: '#3cc4d8', width: 3, opacity: 0.8 })
+    path.forEach((p) => pts.push({ id: p.event_id, lngLat: [p.lon, p.lat], color: '#3cc4d8', radius: 4.5, stroke: '#070a0e', strokeWidth: 2 }))
+    if (trigger) {
+      pts.push({ id: 'trigger', lngLat: [trigger.lon, trigger.lat], color: '#ef4444', radius: 7.5, stroke: '#070a0e', strokeWidth: 2.5 })
+      labels.push({ id: 'trigger', lngLat: [trigger.lon, trigger.lat], text: `MATCH · ${fmtTime(trigger.timestamp)}`, tone: 'alert' })
+    }
+    return { lines, pts, labels }
+  }, [city.data, path, trigger])
+
+  const fitCoords = useMemo<LngLat[]>(() => path.map((p) => [p.lon, p.lat]), [path])
+  const alertT = Date.parse(alert.created_at)
+  // Colour each read against the watchlist pattern when it is canonical; else against the fused plate.
+  const compareTo = pattern && pattern.length === 10 ? pattern : traj?.decoded_plate
+
+  return (
+    <div className="flex flex-col gap-3 p-3">
+      <div className="rounded border border-alert-dim bg-ink-850 px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <SeverityBadge severity={alert.severity} />
+          <WatchlistBadge />
+          <span className="text-sm font-semibold text-alert">{alertTypeLabel(alert.type)}</span>
+          <Plate value={alert.plate} size="md" tone="alert" />
+          <span className="num ml-auto font-mono text-xs text-fg-dim">
+            {alert.alert_id} · {fmtDateTime(alert.created_at)} UTC
+          </span>
+        </div>
+        <p className="mt-1.5 text-[13px] text-fg-strong">{alert.summary}</p>
+      </div>
+
+      <Panel title="Why this is a watchlist match">
+        <WatchlistEvidence alert={alert} traj={traj} cameraName={(id) => camName.get(id)} />
+      </Panel>
+
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <Panel title="Where the vehicle has been" className="h-[360px]">
+          {city.data ? (
+            <CityMap city={city.data} lines={layers.lines} points={layers.pts} labels={layers.labels} highlightCameras={path.map((p) => p.camera_id)} fit={{ key: alert.alert_id, coords: fitCoords.length ? fitCoords : undefined, padding: 60, maxZoom: 15 }} ariaLabel="Map of the watchlisted vehicle's sightings, the matching read in red" />
+          ) : city.isError ? (
+            <ErrorState error={city.error} />
+          ) : (
+            <Loading />
+          )}
+        </Panel>
+        <Panel
+          title="Every read of this vehicle"
+          className="h-[360px]"
+          bodyClassName="overflow-y-auto"
+          actions={
+            traj ? (
+              <Link to={`/trajectories/${traj.trajectory_id}`} className="font-mono text-[11px] text-accent hover:underline">
+                {traj.trajectory_id} →
+              </Link>
+            ) : undefined
+          }
+        >
+          {trajLoading && <Loading />}
+          {!trajLoading && !traj && <EmptyState title="Single read">This match came from a first sighting that is not yet linked to a trajectory.</EmptyState>}
+          {traj && (
+            <ol className="py-1">
+              {traj.events.map((e, i) => {
+                const isTrigger = e.event_id === trigger?.event_id
+                const after = Date.parse(e.timestamp) > alertT
+                return (
+                  <li key={e.event_id} className={cx('grid grid-cols-[18px_1fr_auto] items-center gap-2 px-3 py-1.5', isTrigger && 'bg-alert-faint')}>
+                    <span className={cx('flex h-[18px] w-[18px] items-center justify-center rounded-full text-[9px] font-bold', isTrigger ? 'bg-alert text-ink-950' : 'border border-ink-500 text-fg-dim')}>{i + 1}</span>
+                    <div className="min-w-0">
+                      <div className="flex items-baseline gap-2 text-[11px]">
+                        <span className="num font-mono text-fg-muted">{fmtTime(e.timestamp)}</span>
+                        <span className="font-mono text-fg">{e.camera_id}</span>
+                        <span className="truncate text-fg-dim">{camName.get(e.camera_id)}</span>
+                      </div>
+                      <PatternReadChars read={e.plate_argmax} pattern={compareTo} />
+                    </div>
+                    <span className="text-[10px] text-fg-dim">{isTrigger ? <span className="font-semibold text-alert">match</span> : after ? 'after alert' : ''}</span>
+                  </li>
+                )
+              })}
+            </ol>
+          )}
+        </Panel>
+      </div>
+      <p className="px-1 text-[11px] text-fg-dim">Highlighted characters differ from the watchlist pattern. “?” slots in the pattern accept any character.</p>
+    </div>
+  )
+}
+
 // ------------------------------------------------------------------ page
 
 export function AlertsPage() {
@@ -310,11 +415,17 @@ export function AlertsPage() {
                   >
                     <div className="flex items-center gap-2">
                       <SeverityBadge severity={a.severity} />
-                      <span className={cx('text-xs font-semibold', a.type === 'anomaly' ? 'text-fg' : 'text-alert')}>{alertTypeLabel(a.type)}</span>
+                      <AlertTypeTag type={a.type} />
                       <span className="num ml-auto font-mono text-[11px] text-fg-dim">{fmtTime(a.created_at)}</span>
                     </div>
                     <div className="mt-1.5 flex items-center gap-2">
                       <Plate value={a.plate} size="sm" tone={a.type === 'anomaly' ? 'default' : 'alert'} />
+                      {a.type === 'watchlist' && (
+                        <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-fg-muted">
+                          <MatchedOnTag on={ev.matched_on} />
+                          {fin(ev.match_probability) && <span className="num font-mono text-fg">{fmtPct(ev.match_probability, 0)}</span>}
+                        </span>
+                      )}
                       {fin(ev.distance_m) && fin(ev.delta_t_s) && (
                         <span className="num truncate font-mono text-[11px] text-fg-muted">
                           {fmtDistance(ev.distance_m)} in {fmtDuration(ev.delta_t_s)}
@@ -338,7 +449,7 @@ export function AlertsPage() {
             </Button>
           </div>
         )}
-        {!id && <EmptyState title="Select an alert">Clone and impossible-travel alerts show both sightings, the distance, and the time gap against the minimum physically possible.</EmptyState>}
+        {!id && <EmptyState title="Select an alert">Clone and impossible-travel alerts show both sightings, the distance, and the time gap against the minimum physically possible. Watchlist alerts show what the camera read against the vehicle’s fused plate.</EmptyState>}
         {id && alerts.isLoading && <Loading />}
         {id && alerts.data && !selected && <EmptyState title="Alert not found">It may be outside the current filter.</EmptyState>}
         {selected && <AlertDetail key={selected.alert_id} alert={selected} />}

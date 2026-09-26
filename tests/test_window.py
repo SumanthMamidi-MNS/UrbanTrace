@@ -180,6 +180,81 @@ def test_windowed_solve_never_uses_a_negative_total_log_odds_link():
     assert n_links_checked > 0, "no multi-event trajectory links to check"
 
 
+def test_link_bias_zero_reproduces_default_behaviour_bit_for_bit():
+    """`link_bias` (the calibration sweep knob, docs/decisions.md's
+    beta sweep on TRAIN-seed data) must be a strict no-op at its default:
+    passing `link_bias=0.0` explicitly has to produce byte-identical
+    trajectories to omitting the argument entirely, both at the
+    `_solve_one_window` level and through the full `solve_windowed` seam-
+    stitching path."""
+    ds = _build(n_cameras=8, n_vehicles=150, hours=3, seed=6)
+    models = fit_all(ds)
+    fusion_model = FusionModel(
+        plate_priors=models.plate_priors,
+        kinematic_model=models.kinematic_model,
+        appearance_model=models.appearance_model,
+    )
+    entry_exit = fit_entry_exit_costs(ds.events, ds.city)
+    gate = Gate(model=models.kinematic_model)
+
+    default_paths, default_links, default_stats = _solve_one_window(
+        ds.events, set(), gate, fusion_model, entry_exit, ds.city
+    )
+    biased_paths, biased_links, biased_stats = _solve_one_window(
+        ds.events, set(), gate, fusion_model, entry_exit, ds.city, link_bias=0.0
+    )
+    assert default_paths == biased_paths
+    assert default_stats == biased_stats
+    assert set(default_links) == set(biased_links)
+    for key, link in default_links.items():
+        assert link.total_log_odds == biased_links[key].total_log_odds
+
+    default_windowed = solve_windowed(ds.events, gate, fusion_model, entry_exit, ds.city)
+    biased_windowed = solve_windowed(
+        ds.events, gate, fusion_model, entry_exit, ds.city, link_bias=0.0
+    )
+    default_grouping = _grouping_from_trajectories(default_windowed.trajectories)
+    biased_grouping = _grouping_from_trajectories(biased_windowed.trajectories)
+    assert default_grouping == biased_grouping
+    default_event_ids = [tuple(t.event_ids) for t in default_windowed.trajectories]
+    biased_event_ids = [tuple(t.event_ids) for t in biased_windowed.trajectories]
+    assert default_event_ids == biased_event_ids
+
+
+def test_link_bias_shifts_the_link_threshold():
+    """A sanity check that the knob actually does something: raising beta
+    makes the effective threshold `s(i,j) > -beta` easier to clear, so a
+    strongly positive beta must never keep FEWER arcs (after dominance
+    pruning) than beta=0 on the same window -- and a strongly negative beta
+    must never keep MORE. (architecture.md §3 / mincostflow.py's "THE
+    ARC-COST DERIVATION": pruning keeps exactly the arcs with
+    `s(i,j) > -beta`, a monotonically growing set as beta grows.)"""
+    ds = _build(n_cameras=8, n_vehicles=150, hours=3, seed=6)
+    models = fit_all(ds)
+    fusion_model = FusionModel(
+        plate_priors=models.plate_priors,
+        kinematic_model=models.kinematic_model,
+        appearance_model=models.appearance_model,
+    )
+    entry_exit = fit_entry_exit_costs(ds.events, ds.city)
+    gate = Gate(model=models.kinematic_model)
+
+    _, _, stats_low = _solve_one_window(
+        ds.events, set(), gate, fusion_model, entry_exit, ds.city, link_bias=-5.0
+    )
+    _, _, stats_zero = _solve_one_window(
+        ds.events, set(), gate, fusion_model, entry_exit, ds.city, link_bias=0.0
+    )
+    _, _, stats_high = _solve_one_window(
+        ds.events, set(), gate, fusion_model, entry_exit, ds.city, link_bias=5.0
+    )
+    assert stats_low.n_arcs_after <= stats_zero.n_arcs_after <= stats_high.n_arcs_after
+    assert stats_low.n_arcs_after < stats_high.n_arcs_after, (
+        "a 10-nat swing in beta should change which arcs clear the "
+        "dominance-pruning threshold on a real (non-degenerate) window"
+    )
+
+
 def test_windowed_solve_covers_every_event():
     ds = _build(n_cameras=8, n_vehicles=100, hours=2, seed=7)
     models = fit_all(ds)

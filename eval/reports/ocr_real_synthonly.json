@@ -1,0 +1,42 @@
+{
+  "n_samples": 510,
+  "whole_plate_accuracy": 0.09215686274509804,
+  "char_accuracy": 0.5147058823529411,
+  "temperature": 1.1846872568130493,
+  "confidence_ece_before_calibration": 0.27931126228156605,
+  "confidence_ece_after_calibration": 0.22136518464310562,
+  "reading_win_counts": {
+    "one_line": 417,
+    "two_row": 93
+  },
+  "per_condition": {
+    "State-wise_OLX": {
+      "n_samples": 170,
+      "whole_plate_accuracy": 0.08235294117647059,
+      "char_accuracy": 0.49764705882352944
+    },
+    "google_images": {
+      "n_samples": 148,
+      "whole_plate_accuracy": 0.07432432432432433,
+      "char_accuracy": 0.5722972972972973
+    },
+    "video_images": {
+      "n_samples": 192,
+      "whole_plate_accuracy": 0.11458333333333333,
+      "char_accuracy": 0.48541666666666666
+    }
+  },
+  "group_by_plate": {
+    "n_unique_plates": 276,
+    "whole_plate_accuracy_per_plate_mean": 0.07999581463540273,
+    "char_accuracy_per_plate_mean": 0.4952138846161706,
+    "images_per_plate_min": 1,
+    "images_per_plate_max": 34,
+    "images_per_plate_mean": 1.8478260869565217
+  },
+  "dataset": "real",
+  "description": "REAL, held-out plate OCR evaluation -- 510 samples from C:\\sutra-data\\ocr\\real\\test\\labels.csv. Supports the PRD's real-Indian-plate accuracy claim.",
+  "checkpoint": "C:\\sutra-data\\ocr\\runs\\synth\\best.pt",
+  "csv": "C:\\sutra-data\\ocr\\real\\test\\labels.csv",
+  "generated_at": "2026-09-22T11:15:28.548804+00:00"
+}

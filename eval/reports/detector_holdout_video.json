@@ -1,0 +1,16 @@
+{
+  "description": "Plate detector on a HELD-OUT video (video_frames_boxes vid-3: 50 frames, 35 plate boxes), never used in detector fine-tuning (fine-tune used vid-1, vid-2, plate_boxes_2k scene images and indian_vehicle_xml OCR-TRAIN-split images only). Ultralytics val, conf=0.001, iou=0.6. Small test set: treat as indicative, not precise. Run by the lead on 2026-09-25.",
+  "n_frames": 50,
+  "n_gt_boxes": 35,
+  "results": {
+    "pretrained_imgsz640": {"precision": 0.620, "recall": 0.333, "map50": 0.308, "map50_95": 0.062},
+    "pretrained_imgsz1280": {"precision": 0.340, "recall": 0.238, "map50": 0.173, "map50_95": 0.036},
+    "finetuned_imgsz640": {"precision": 0.621, "recall": 0.506, "map50": 0.530, "map50_95": 0.167},
+    "finetuned_imgsz1280": {"precision": 0.440, "recall": 0.393, "map50": 0.291, "map50_95": 0.055}
+  },
+  "training_time_validation_for_comparison": {"recall": 0.962, "map50": 0.980, "note": "near-duplicate frames of the training videos; optimistic"},
+  "weights": {
+    "pretrained": "C:/sutra-data/ocr/weights/best.pt",
+    "finetuned": "C:/sutra-data/ocr/runs/detector_finetune/weights/best.pt"
+  }
+}

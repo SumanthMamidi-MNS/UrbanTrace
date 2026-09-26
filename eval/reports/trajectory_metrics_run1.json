@@ -1,0 +1,124 @@
+{
+  "description": "FULL-dataset trajectory-level result (SUTRA vs Baseline A, exact plate match). architecture.md section 8's headline scoreboard.",
+  "data_dir": "C:\\Users\\mamid\\AppData\\Local\\Temp\\pytest-of-mamid\\pytest-153\\test_run_pipeline_train_split_0\\congested",
+  "max_hours": null,
+  "link_bias": 0.0,
+  "config": {
+    "cameras": 6,
+    "clone_fraction": 0.02,
+    "congestion": true,
+    "congestion_config": {
+      "alpha": 0.15,
+      "beta": 4,
+      "bucket_minutes": 5,
+      "capacity_by_speed_kmh": {
+        "30.0": 60.0,
+        "50.0": 130.0,
+        "80.0": 140.0
+      },
+      "capacity_fallback": 300.0,
+      "enabled": true
+    },
+    "hours": 2,
+    "seed": 100,
+    "vehicles": 80
+  },
+  "train": {
+    "n_vehicles": 50,
+    "seed": 9101,
+    "hours": 2,
+    "congestion": true
+  },
+  "n_events": 187,
+  "gating": {
+    "mean_candidates_per_event": 18.27807486631016,
+    "n_candidate_pairs": 3418
+  },
+  "n_windows": 4,
+  "window_log": [
+    {
+      "window_index": 0,
+      "n_events": 5,
+      "n_arcs_before": 3,
+      "n_arcs_after": 3,
+      "n_components": 3,
+      "largest_component": 3,
+      "elapsed_s": 0.0027823999989777803
+    },
+    {
+      "window_index": 1,
+      "n_events": 6,
+      "n_arcs_before": 3,
+      "n_arcs_after": 3,
+      "n_components": 4,
+      "largest_component": 3,
+      "elapsed_s": 0.0010591999744065106
+    },
+    {
+      "window_index": 2,
+      "n_events": 180,
+      "n_arcs_before": 3412,
+      "n_arcs_after": 152,
+      "n_components": 65,
+      "largest_component": 10,
+      "elapsed_s": 0.04137370001990348
+    },
+    {
+      "window_index": 3,
+      "n_events": 76,
+      "n_arcs_before": 0,
+      "n_arcs_after": 0,
+      "n_components": 76,
+      "largest_component": 1,
+      "elapsed_s": 0.0005361000075936317
+    }
+  ],
+  "solver": {
+    "total_arcs_before_pruning": 3418,
+    "total_arcs_after_pruning": 158,
+    "mean_windowed_solve_s_per_window": 0.011437850000220351
+  },
+  "sutra": {
+    "idf1": 0.9679144385026738,
+    "id_precision": 0.9679144385026738,
+    "id_recall": 0.9679144385026738,
+    "id_switches": 3,
+    "fragmentation": 3,
+    "trajectory_completeness": 0.9833333333333334,
+    "n_predicted_trajectories": 81,
+    "n_gt_vehicles": 80,
+    "n_gt_events": 187,
+    "n_predicted_events": 187,
+    "idtp": 181.0,
+    "idfp": 6.0,
+    "idfn": 6.0
+  },
+  "exact_match_baseline": {
+    "idf1": 0.839572192513369,
+    "id_precision": 0.839572192513369,
+    "id_recall": 0.839572192513369,
+    "id_switches": 30,
+    "fragmentation": 30,
+    "trajectory_completeness": 0.8479166666666667,
+    "n_predicted_trajectories": 109,
+    "n_gt_vehicles": 80,
+    "n_gt_events": 187,
+    "n_predicted_events": 187,
+    "idtp": 157.0,
+    "idfp": 30.0,
+    "idfn": 30.0
+  },
+  "timing_s": {
+    "load_data": 0.051598548889160156,
+    "generate_train_split": 0.1370253562927246,
+    "fit_models": 0.04252910614013672,
+    "gating": 0.002323627471923828,
+    "windowed_solve": 0.04712867736816406,
+    "compute_metrics": 0.0022420883178710938,
+    "baseline_a": 0.0030012130737304688,
+    "write_trajectories": 0.0010018348693847656,
+    "pipeline_(gate+fit_context_excluded)": 0.04945230484008789,
+    "total_wall_s": 0.2868504524230957
+  },
+  "events_per_sec_pipeline": 3781.4213231252834
+}

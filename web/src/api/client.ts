@@ -11,7 +11,11 @@ import type {
   EventDetail,
   EventSummary,
   EventsQuery,
+  FlowBucket,
+  FlowTrendQuery,
   Health,
+  Heatmap,
+  HeatmapQuery,
   LiveMessage,
   OdMatrix,
   Page,
@@ -24,6 +28,10 @@ import type {
   TrajectorySummary,
   VolumeBucket,
   VolumesQuery,
+  WatchlistCreate,
+  WatchlistEntry,
+  WatchlistHit,
+  WatchlistHitsQuery,
 } from './types'
 
 /** Every REST endpoint in docs/api-contract.md, one method each. */
@@ -43,6 +51,13 @@ export interface SutraApi {
   alerts(q?: AlertsQuery): Promise<Alert[]>
   evalReports(): Promise<EvalReports>
   replay(body: ReplayRequest): Promise<ReplayState>
+  // ---- v2
+  watchlist(): Promise<WatchlistEntry[]>
+  addWatchlist(body: WatchlistCreate): Promise<WatchlistEntry>
+  deleteWatchlist(entryId: string): Promise<{ deleted: true }>
+  watchlistHits(q?: WatchlistHitsQuery): Promise<WatchlistHit[]>
+  heatmap(q?: HeatmapQuery): Promise<Heatmap>
+  flowTrend(q?: FlowTrendQuery): Promise<FlowBucket[]>
 }
 
 export type LiveStatus = 'connecting' | 'open' | 'closed'
@@ -113,6 +128,12 @@ const httpApi: SutraApi = {
   alerts: (q) => request(`/api/alerts${qs(q)}`),
   evalReports: () => request('/api/eval'),
   replay: (body) => request('/api/replay', { method: 'POST', body: JSON.stringify(body) }),
+  watchlist: () => request('/api/watchlist'),
+  addWatchlist: (body) => request('/api/watchlist', { method: 'POST', body: JSON.stringify(body) }),
+  deleteWatchlist: (id) => request(`/api/watchlist/${enc(id)}`, { method: 'DELETE' }),
+  watchlistHits: (q) => request(`/api/watchlist/hits${qs(q)}`),
+  heatmap: (q) => request(`/api/analytics/heatmap${qs(q)}`),
+  flowTrend: (q) => request(`/api/analytics/flow_trend${qs(q)}`),
 }
 
 /** Real /ws/live connection with exponential-backoff reconnect. */

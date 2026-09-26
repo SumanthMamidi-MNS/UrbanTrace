@@ -4,11 +4,17 @@ import type {
   CameraStats,
   Corridor,
   EventSummary,
+  FlowBucket,
+  HeatPoint,
   Page,
   SearchHit,
   TrajectorySummary,
   VolumeBucket,
+  WatchlistEntry,
 } from '../types'
+import { getRouter } from '../../lib/geo'
+import { expandPlatePattern } from '../../lib/plate'
+import { linkSpeedKmh, mean, quantile } from '../../lib/speed'
 import { EVAL_REPORTS } from './evalFixtures'
 import type { LiveSim } from './live'
 import type { MockDb } from './world'
@@ -55,7 +61,29 @@ function toSlotPattern(q: string, plate: string): string | null {
 
 const time = (iso: string) => Date.parse(iso)
 
+type LinkSpeed = { toCamera: string; t: number; kmh: number }
+
+/** Every trajectory link visible at `now` with its contract-v2 speed (v_max-violating links excluded). */
+function linkSpeeds(db: MockDb, now: number): LinkSpeed[] {
+  const router = getRouter(db.city)
+  const out: LinkSpeed[] = []
+  for (const t of db.trajectories.values()) {
+    const byId = new Map(t.events.map((e) => [e.event_id, e]))
+    for (const l of t.links) {
+      const a = byId.get(l.from_event_id)
+      const b = byId.get(l.to_event_id)
+      if (!a || !b) continue
+      const tb = db.eventTime.get(b.event_id) ?? time(b.timestamp)
+      if (tb > now) continue
+      const kmh = linkSpeedKmh(router.distanceM(a.camera_id, b.camera_id), l.delta_t_s)
+      if (kmh !== null) out.push({ toCamera: b.camera_id, t: tb, kmh })
+    }
+  }
+  return out
+}
+
 export function createMockApi(db: MockDb, live: LiveSim): SutraApi {
+  let watchSeq = 1
   const lat = async <T>(fn: () => T, ms = 90): Promise<T> => {
     await delay(ms + Math.random() * 90)
     return clone(fn())
@@ -224,6 +252,7 @@ export function createMockApi(db: MockDb, live: LiveSim): SutraApi {
 
     corridors: (q = {}) =>
       lat(() => {
+        const router = getRouter(db.city)
         const groups = new Map<string, { tt: number[]; ff: number[] }>()
         for (const t of db.trajectories.values()) {
           for (const l of t.links) {
@@ -249,6 +278,9 @@ export function createMockApi(db: MockDb, live: LiveSim): SutraApi {
           const [from_camera, to_camera] = k.split('|')
           const median = q50(g.tt, 0.5)
           const ff = g.ff[0]
+          const distance = router.distanceM(from_camera, to_camera)
+          const speeds = g.tt.map((dt) => linkSpeedKmh(distance, dt)).filter((v): v is number => v !== null)
+          if (!speeds.length || !(ff > 0)) return
           out.push({
             from_camera,
             to_camera,
@@ -257,6 +289,10 @@ export function createMockApi(db: MockDb, live: LiveSim): SutraApi {
             p90_travel_s: +q50(g.tt, 0.9).toFixed(1),
             free_flow_s: +ff.toFixed(1),
             congestion_index: +(median / ff).toFixed(3),
+            distance_m: Math.round(distance),
+            avg_speed_kmh: +mean(speeds).toFixed(1),
+            p85_speed_kmh: +quantile(speeds, 0.85).toFixed(1),
+            free_flow_speed_kmh: +((distance / ff) * 3.6).toFixed(1),
           })
         })
         out.sort((a, b) => b.congestion_index - a.congestion_index)
@@ -272,6 +308,116 @@ export function createMockApi(db: MockDb, live: LiveSim): SutraApi {
       }),
 
     evalReports: () => lat(() => ({ reports: EVAL_REPORTS }), 200),
+
+    // ---------------------------------------------------------------- v2
+
+    watchlist: () => lat(() => [...db.watchlist].sort((a, b) => time(b.created_at) - time(a.created_at))),
+
+    addWatchlist: async (body) => {
+      await delay(120)
+      const pattern = String(body?.pattern ?? '').trim()
+      if (!pattern) throw new ApiError(422, 'pattern is required')
+      const exp = expandPlatePattern(pattern)
+      if (!exp.ok) throw new ApiError(422, exp.detail)
+      const entry: WatchlistEntry = {
+        entry_id: `WL-${String(watchSeq++).padStart(4, '0')}`,
+        pattern: pattern.toUpperCase(),
+        canonical_patterns: exp.forms,
+        reason: String(body?.reason ?? '').trim(),
+        created_at: new Date(live.simTimeMs()).toISOString(),
+        active: true,
+        hits: 0,
+      }
+      db.watchlist.push(entry)
+      live.plantWatchlistTargets(entry)
+      return clone(entry)
+    },
+
+    deleteWatchlist: async (id) => {
+      await delay(80)
+      const i = db.watchlist.findIndex((e) => e.entry_id === id)
+      if (i < 0) throw new ApiError(404, `watchlist entry ${id} not found`)
+      db.watchlist.splice(i, 1)
+      return { deleted: true as const }
+    },
+
+    watchlistHits: (q = {}) =>
+      lat(() =>
+        db.watchHits
+          .filter((h) => !q.entry_id || h.entry_id === q.entry_id)
+          .slice()
+          .reverse()
+          .slice(0, clampLimit(q.limit)),
+      ),
+
+    heatmap: (q = {}) =>
+      lat(() => {
+        const at = q.at ? time(q.at) : live.simTimeMs()
+        if (!Number.isFinite(at)) throw new ApiError(422, `invalid at: ${q.at}`)
+        const windowMin = q.window_minutes ?? 15
+        if (!(windowMin > 0)) throw new ApiError(422, 'window_minutes must be > 0')
+        const metric = q.metric ?? 'density'
+        if (metric !== 'density' && metric !== 'speed') throw new ApiError(422, `unknown metric ${String(metric)}`)
+        const from = at - windowMin * 60e3
+        const per = new Map<string, number[]>()
+        const push = (cam: string, v: number) => {
+          const l = per.get(cam)
+          if (l) l.push(v)
+          else per.set(cam, [v])
+        }
+        if (metric === 'density') {
+          for (const e of db.events) {
+            const t = db.eventTime.get(e.event_id) ?? 0
+            if (t > from && t <= at) push(e.camera_id, 1)
+          }
+        } else {
+          for (const s of linkSpeeds(db, at)) if (s.t > from) push(s.toCamera, s.kmh)
+        }
+        const raw = new Map([...per].map(([cam, xs]) => [cam, metric === 'density' ? xs.length : mean(xs)] as const))
+        const max = Math.max(1, ...raw.values())
+        const points: HeatPoint[] = []
+        raw.forEach((v, cam) => {
+          const c = db.cameraById.get(cam)
+          if (c) points.push({ camera_id: cam, lat: c.lat, lon: c.lon, weight: metric === 'density' ? +(v / max).toFixed(4) : +v.toFixed(1) })
+        })
+        return { at: new Date(at).toISOString(), window_minutes: windowMin, metric, points }
+      }),
+
+    flowTrend: (q = {}) =>
+      lat(() => {
+        const bucketMs = Math.max(1, q.bucket_minutes ?? 15) * 60e3
+        const now = live.simTimeMs()
+        const counts = new Map<number, number>()
+        let lo = Infinity
+        for (const e of db.events) {
+          const t = db.eventTime.get(e.event_id) ?? 0
+          if (t > now) continue
+          const b = Math.floor(t / bucketMs) * bucketMs
+          lo = Math.min(lo, b)
+          counts.set(b, (counts.get(b) ?? 0) + 1)
+        }
+        if (!Number.isFinite(lo)) return []
+        const hi = Math.floor(now / bucketMs) * bucketMs
+        const speeds = new Map<number, number[]>()
+        for (const s of linkSpeeds(db, now)) {
+          const b = Math.floor(s.t / bucketMs) * bucketMs
+          const l = speeds.get(b)
+          if (l) l.push(s.kmh)
+          else speeds.set(b, [s.kmh])
+        }
+        const spans = [...db.trajectories.values()].map((t) => [time(t.start_time), Math.min(time(t.end_time), now)] as const).filter(([s]) => s <= now)
+        const out: FlowBucket[] = []
+        for (let b = lo; b <= hi; b += bucketMs) {
+          const sp = speeds.get(b)
+          out.push({
+            bucket_start: new Date(b).toISOString(),
+            events: counts.get(b) ?? 0,
+            active_trajectories: spans.filter(([s, e]) => s < b + bucketMs && e >= b).length,
+            mean_speed_kmh: sp?.length ? +mean(sp).toFixed(1) : null,
+          })
+        }
+        return out
+      }),
 
     replay: async (body) => {
       await delay(80)

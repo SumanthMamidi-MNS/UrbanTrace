@@ -21,6 +21,8 @@ export class RoadRouter {
   private readonly cameraNode = new Map<string, string>()
   private readonly cameraCoord = new Map<string, LngLat>()
   private readonly cache = new Map<string, LngLat[]>()
+  private readonly edgeLen = new Map<string, number>()
+  private readonly distCache = new Map<string, number>()
 
   constructor(city: City) {
     for (const n of city.nodes) this.coords.set(n.node_id, [n.lon, n.lat])
@@ -30,6 +32,8 @@ export class RoadRouter {
       l.push({ to: b, w })
     }
     for (const e of city.edges) {
+      this.edgeLen.set(`${e.from_node}|${e.to_node}`, e.length_m)
+      this.edgeLen.set(`${e.to_node}|${e.from_node}`, e.length_m)
       add(e.from_node, e.to_node, e.length_m)
       add(e.to_node, e.from_node, e.length_m)
     }
@@ -63,6 +67,25 @@ export class RoadRouter {
     }
     this.cache.set(key, out)
     return out
+  }
+
+  /** Road-graph shortest-path distance (m) between two cameras; NaN if unknown. */
+  distanceM(fromCam: string, toCam: string): number {
+    const key = `${fromCam}>${toCam}`
+    const hit = this.distCache.get(key)
+    if (hit !== undefined) return hit
+    const src = this.cameraNode.get(fromCam)
+    const dst = this.cameraNode.get(toCam)
+    let d = NaN
+    if (src && dst) {
+      const nodes = src === dst ? [src] : this.adj.has(src) ? this.dijkstra(src, dst) : null
+      if (nodes) {
+        d = 0
+        for (let i = 1; i < nodes.length; i++) d += this.edgeLen.get(`${nodes[i - 1]}|${nodes[i]}`) ?? 0
+      }
+    }
+    this.distCache.set(key, d)
+    return d
   }
 
   /** Full road-following line through a camera sequence. */

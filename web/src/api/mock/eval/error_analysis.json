@@ -1,0 +1,550 @@
+{
+  "description": "Error analysis of the ALREADY-SOLVED full-city SUTRA run, measured with the FIXED prior of 5 expected candidates (pre-fix) -- engine/scoring/fusion.py's prior_log_odds is currently -log(DEFAULT_EXPECTED_CANDIDATES-1)=-log(4) for EVERY link regardless of the gate's actual ~218 candidates/event, a known bug being fixed separately (see merges.prior_bug_diagnostics below); these numbers will change once that fix lands and this report is re-run. Data: data\\run1 (107234 events, 18483 predicted trajectories, 19995 true vehicles; matches eval/reports/trajectory_metrics.json's headline). Computed by reading data\\run1\\pipeline\\trajectories.jsonl, data\\run1\\ground_truth.json and data\\run1\\events.jsonl -- no re-solving.",
+  "data_dir": "data\\run1",
+  "pipeline_dir": "data\\run1\\pipeline",
+  "merges": {
+    "n_predicted_trajectories": 18483,
+    "n_trajectories_containing_a_merge": 1630,
+    "n_true_vehicles_involved_in_merges": 3505,
+    "n_wrong_adjacent_transitions": 1892,
+    "category_counts": {
+      "other": 1595,
+      "same_vehicle_type_and_colour": 294,
+      "clone_pair": 2,
+      "near_miss_plate": 1
+    },
+    "category_fraction": {
+      "other": 0.8430232558139535,
+      "same_vehicle_type_and_colour": 0.1553911205073996,
+      "clone_pair": 0.0010570824524312897,
+      "near_miss_plate": 0.0005285412262156448
+    },
+    "top_category": "other",
+    "hour_of_day_counts": {
+      "0": 12,
+      "1": 16,
+      "2": 24,
+      "3": 17,
+      "4": 24,
+      "5": 19,
+      "6": 67,
+      "7": 173,
+      "8": 262,
+      "9": 162,
+      "10": 61,
+      "11": 18,
+      "12": 14,
+      "13": 12,
+      "14": 32,
+      "15": 59,
+      "16": 142,
+      "17": 229,
+      "18": 254,
+      "19": 160,
+      "20": 61,
+      "21": 36,
+      "22": 23,
+      "23": 15
+    },
+    "either_side_misread_count_by_category": {
+      "other": 423,
+      "same_vehicle_type_and_colour": 72,
+      "near_miss_plate": 1
+    },
+    "either_side_misread_fraction_by_category": {
+      "other": 0.2652037617554859,
+      "same_vehicle_type_and_colour": 0.24489795918367346,
+      "clone_pair": 0.0,
+      "near_miss_plate": 1.0
+    },
+    "dt_bucket_counts_by_category": {
+      "other:30-120s": 804,
+      "other:>120s": 516,
+      "same_vehicle_type_and_colour:30-120s": 156,
+      "other:<=30s": 275,
+      "same_vehicle_type_and_colour:>120s": 100,
+      "same_vehicle_type_and_colour:<=30s": 38,
+      "clone_pair:30-120s": 2,
+      "near_miss_plate:>120s": 1
+    },
+    "prior_bug_diagnostics": {
+      "note": "KNOWN BUG (being fixed separately, not by this module): every link's prior_log_odds is a FIXED -log(DEFAULT_EXPECTED_CANDIDATES-1)=-log(4)=-1.3863 regardless of the gate's actual candidate pool size. This run's true mean pool size was 218.00996885316223 candidates/event (eval/reports/trajectory_metrics.json gating.mean_candidates_per_event), implying a corrected prior of roughly -5.3799 -- an APPROXIMATION using the mean pool size, not each transition's own exact gated-candidate count (that would need re-running gating).",
+      "current_fixed_prior_log_odds": -1.3862943611198906,
+      "corrected_prior_log_odds_approx": -5.379943291900771,
+      "n_wrong_links_with_evidence": 1892,
+      "n_wrong_links_negative_total_log_odds": 1090,
+      "share_wrong_links_negative_total_log_odds": 0.5761099365750528,
+      "n_wrong_links_prior_only_driven": 673,
+      "share_wrong_links_prior_only_driven": 0.35570824524312894,
+      "n_wrong_links_currently_accepted": 802,
+      "share_of_currently_accepted_that_are_prior_only_driven": 0.8391521197007481,
+      "share_wrong_links_explained_by_negative_total_or_prior_bug": 0.9318181818181818
+    },
+    "examples": {
+      "other": [
+        {
+          "trajectory_id": "traj_000048",
+          "vehicle_a": "veh_000553",
+          "vehicle_b": "veh_017976",
+          "plate_a": "HR34PV8826",
+          "plate_b": "HR96A_8337",
+          "observed_plate_a": "HR34PV8826",
+          "observed_plate_b": "HR96T_8337",
+          "either_side_misread": true,
+          "dt_s": 83.26156711578369,
+          "hour": 0,
+          "timestamp": "2026-01-01T00:11:12.812675",
+          "plate_lr": 0.5070138512739426,
+          "appearance_lr": 0.3020232752434455,
+          "kinematic_lr": -0.23411159989841135,
+          "total_log_odds": -0.8113688345009138,
+          "recomputed_total_with_corrected_prior_approx": -4.805017765281795,
+          "prior_only_driven": false
+        },
+        {
+          "trajectory_id": "traj_000086",
+          "vehicle_a": "veh_010601",
+          "vehicle_b": "veh_016036",
+          "plate_a": "MP61N_5834",
+          "plate_b": "MP69WM8498",
+          "observed_plate_a": "MP61N_5834",
+          "observed_plate_b": "MP69WM8498",
+          "either_side_misread": false,
+          "dt_s": 118.57609486579895,
+          "hour": 0,
+          "timestamp": "2026-01-01T00:15:11.185329",
+          "plate_lr": 7.286797780272883,
+          "appearance_lr": -2.858042588128771,
+          "kinematic_lr": -0.9761631520479037,
+          "total_log_odds": 2.066297678976317,
+          "recomputed_total_with_corrected_prior_approx": -1.9273512518045637,
+          "prior_only_driven": true
+        },
+        {
+          "trajectory_id": "traj_000103",
+          "vehicle_a": "veh_019030",
+          "vehicle_b": "veh_009805",
+          "plate_a": "HR61GG7827",
+          "plate_b": "HR67AC_388",
+          "observed_plate_a": "HR61GG7877",
+          "observed_plate_b": "HR67AC_388",
+          "either_side_misread": true,
+          "dt_s": 55.22302508354187,
+          "hour": 0,
+          "timestamp": "2026-01-01T00:16:07.652262",
+          "plate_lr": 1.7381630226462068,
+          "appearance_lr": -5.885029103529195,
+          "kinematic_lr": 3.3995535445100162,
+          "total_log_odds": -2.133606897492863,
+          "recomputed_total_with_corrected_prior_approx": -6.127255828273744,
+          "prior_only_driven": false
+        },
+        {
+          "trajectory_id": "traj_000119",
+          "vehicle_a": "veh_010767",
+          "vehicle_b": "veh_018949",
+          "plate_a": "PB57ZL__39",
+          "plate_b": "PB22VW5540",
+          "observed_plate_a": "PB57ZL__39",
+          "observed_plate_b": "PB22VW5540",
+          "either_side_misread": false,
+          "dt_s": 120.26988005638123,
+          "hour": 0,
+          "timestamp": "2026-01-01T00:14:48.444268",
+          "plate_lr": 1.5010347541535207,
+          "appearance_lr": 2.4030712160934966,
+          "kinematic_lr": -2.142019353725616,
+          "total_log_odds": 0.37579225540151073,
+          "recomputed_total_with_corrected_prior_approx": -3.61785667537937,
+          "prior_only_driven": true
+        },
+        {
+          "trajectory_id": "traj_000131",
+          "vehicle_a": "veh_006020",
+          "vehicle_b": "veh_014798",
+          "plate_a": "AP83UO_589",
+          "plate_b": "MP68O_9317",
+          "observed_plate_a": "AP83UO_589",
+          "observed_plate_b": "MP68O_9317",
+          "either_side_misread": false,
+          "dt_s": 34.697288036346436,
+          "hour": 0,
+          "timestamp": "2026-01-01T00:20:00.269433",
+          "plate_lr": 3.6795562738943044,
+          "appearance_lr": -6.32512907242038,
+          "kinematic_lr": 4.975840602361664,
+          "total_log_odds": 0.9439734427156976,
+          "recomputed_total_with_corrected_prior_approx": -3.0496754880651826,
+          "prior_only_driven": true
+        }
+      ],
+      "same_vehicle_type_and_colour": [
+        {
+          "trajectory_id": "traj_000278",
+          "vehicle_a": "veh_001222",
+          "vehicle_b": "veh_004904",
+          "plate_a": "RJ86WD_926",
+          "plate_b": "RJ07NZ1532",
+          "observed_plate_a": "RJ86WD_926",
+          "observed_plate_b": "RJ07NZ1532",
+          "either_side_misread": false,
+          "dt_s": 65.27566504478455,
+          "hour": 0,
+          "timestamp": "2026-01-01T00:45:29.307043",
+          "plate_lr": 0.6484882534321255,
+          "appearance_lr": -2.901857725769618,
+          "kinematic_lr": 3.5603076691765363,
+          "total_log_odds": -0.07935616428084646,
+          "recomputed_total_with_corrected_prior_approx": -4.073005095061727,
+          "prior_only_driven": false
+        },
+        {
+          "trajectory_id": "traj_000381",
+          "vehicle_a": "veh_012584",
+          "vehicle_b": "veh_019994",
+          "plate_a": "MP94HA___3",
+          "plate_b": "HR58EJ0732",
+          "observed_plate_a": "MP94HA___3",
+          "observed_plate_b": "HR58EJ0732",
+          "either_side_misread": false,
+          "dt_s": 106.17702388763428,
+          "hour": 1,
+          "timestamp": "2026-01-01T01:02:56.806449",
+          "plate_lr": -1.184934473185324,
+          "appearance_lr": -2.2807287624884003,
+          "kinematic_lr": 2.833110155587389,
+          "total_log_odds": -2.018847441206226,
+          "recomputed_total_with_corrected_prior_approx": -6.0124963719871065,
+          "prior_only_driven": false
+        },
+        {
+          "trajectory_id": "traj_000447",
+          "vehicle_a": "veh_015202",
+          "vehicle_b": "veh_016125",
+          "plate_a": "HR74MO3983",
+          "plate_b": "RJ14P___83",
+          "observed_plate_a": "HR74MO3983",
+          "observed_plate_b": "AA04P___83",
+          "either_side_misread": true,
+          "dt_s": 64.5492479801178,
+          "hour": 1,
+          "timestamp": "2026-01-01T01:09:29.896405",
+          "plate_lr": -0.6103068691898965,
+          "appearance_lr": 0.10614091207117493,
+          "kinematic_lr": 2.149743335351767,
+          "total_log_odds": 0.25928301711315505,
+          "recomputed_total_with_corrected_prior_approx": -3.7343659136677254,
+          "prior_only_driven": true
+        },
+        {
+          "trajectory_id": "traj_000468",
+          "vehicle_a": "veh_007702",
+          "vehicle_b": "veh_003113",
+          "plate_a": "TN63UP___5",
+          "plate_b": "TN39RD9372",
+          "observed_plate_a": "TN63UP___5",
+          "observed_plate_b": "TN39RD9372",
+          "either_side_misread": false,
+          "dt_s": 79.57568502426147,
+          "hour": 1,
+          "timestamp": "2026-01-01T01:12:29.489127",
+          "plate_lr": 3.0751510411285157,
+          "appearance_lr": -7.169906915669614,
+          "kinematic_lr": 5.854470656991037,
+          "total_log_odds": 0.3734204213300476,
+          "recomputed_total_with_corrected_prior_approx": -3.6202285094508326,
+          "prior_only_driven": true
+        },
+        {
+          "trajectory_id": "traj_000916",
+          "vehicle_a": "veh_018035",
+          "vehicle_b": "veh_009438",
+          "plate_a": "KA17H_2249",
+          "plate_b": "KA93DH_843",
+          "observed_plate_a": "KA17H_2249",
+          "observed_plate_b": "KA93DH_843",
+          "either_side_misread": false,
+          "dt_s": 86.02325487136841,
+          "hour": 2,
+          "timestamp": "2026-01-01T02:22:55.484407",
+          "plate_lr": 0.6079226903818755,
+          "appearance_lr": 1.400926216421805,
+          "kinematic_lr": -0.19428578926644935,
+          "total_log_odds": 0.42826875641734063,
+          "recomputed_total_with_corrected_prior_approx": -3.56538017436354,
+          "prior_only_driven": true
+        }
+      ],
+      "clone_pair": [
+        {
+          "trajectory_id": "traj_003152",
+          "vehicle_a": "veh_014924",
+          "vehicle_b": "veh_019008",
+          "plate_a": "UP20YD1617",
+          "plate_b": "UP20YD1617",
+          "observed_plate_a": "UP20YD1617",
+          "observed_plate_b": "UP20YD1617",
+          "either_side_misread": false,
+          "dt_s": 41.22612190246582,
+          "hour": 6,
+          "timestamp": "2026-01-01T06:55:43.515467",
+          "plate_lr": 17.728365848424055,
+          "appearance_lr": -14.351628547353917,
+          "kinematic_lr": -1.6889816480408029,
+          "total_log_odds": 0.3014612919094444,
+          "recomputed_total_with_corrected_prior_approx": -3.6921876388714363,
+          "prior_only_driven": true
+        },
+        {
+          "trajectory_id": "traj_005731",
+          "vehicle_a": "veh_018256",
+          "vehicle_b": "veh_009561",
+          "plate_a": "HR92EZ_816",
+          "plate_b": "HR92EZ_816",
+          "observed_plate_a": "HR92EZ_816",
+          "observed_plate_b": "HR92EZ_816",
+          "either_side_misread": false,
+          "dt_s": 35.15467715263367,
+          "hour": 8,
+          "timestamp": "2026-01-01T08:47:06.469083",
+          "plate_lr": 17.225960617881874,
+          "appearance_lr": -4.321730490034388,
+          "kinematic_lr": 3.698200439782603,
+          "total_log_odds": 15.2161362065102,
+          "recomputed_total_with_corrected_prior_approx": 11.22248727572932,
+          "prior_only_driven": false
+        }
+      ],
+      "near_miss_plate": [
+        {
+          "trajectory_id": "traj_012204",
+          "vehicle_a": "veh_006447",
+          "vehicle_b": "veh_018837",
+          "plate_a": "AP35G_6495",
+          "plate_b": "AP35G_6692",
+          "observed_plate_a": "AP35G_8495",
+          "observed_plate_b": "AP35G_6692",
+          "either_side_misread": true,
+          "dt_s": 190.44563794136047,
+          "hour": 17,
+          "timestamp": "2026-01-01T17:06:35.728904",
+          "plate_lr": 12.666316971519308,
+          "appearance_lr": -9.435478890326143,
+          "kinematic_lr": -2.0344127703112243,
+          "total_log_odds": -0.18986905023795053,
+          "recomputed_total_with_corrected_prior_approx": -4.183517981018831,
+          "prior_only_driven": false
+        }
+      ]
+    }
+  },
+  "splits": {
+    "n_gt_vehicles": 19995,
+    "n_gt_vehicles_split": 380,
+    "n_split_breaks": 587,
+    "cause_counts": {
+      "window_seam": 88,
+      "other": 326,
+      "plate_misread_at_break": 155,
+      "missed_detection_gap": 18
+    },
+    "cause_fraction": {
+      "window_seam": 0.14991482112436116,
+      "other": 0.555366269165247,
+      "plate_misread_at_break": 0.26405451448040884,
+      "missed_detection_gap": 0.030664395229982964
+    },
+    "top_cause": "other",
+    "examples": {
+      "window_seam": [
+        {
+          "gt_vehicle_id": "veh_000984",
+          "true_plate": "AP16MC__39",
+          "from_event": "evt_00005246",
+          "to_event": "evt_00005247",
+          "from_trajectory": "traj_000003",
+          "to_trajectory": "traj_000060",
+          "gap_s": 27.521841049194336
+        },
+        {
+          "gt_vehicle_id": "veh_006692",
+          "true_plate": "MH59A____3",
+          "from_event": "evt_00035980",
+          "to_event": "evt_00035981",
+          "from_trajectory": "traj_000444",
+          "to_trajectory": "traj_000450",
+          "gap_s": 24.483479976654053
+        },
+        {
+          "gt_vehicle_id": "veh_014622",
+          "true_plate": "KA93MM3679",
+          "from_event": "evt_00078471",
+          "to_event": "evt_00078472",
+          "from_trajectory": "traj_000662",
+          "to_trajectory": "traj_000646",
+          "gap_s": 37.24310898780823
+        },
+        {
+          "gt_vehicle_id": "veh_014622",
+          "true_plate": "KA93MM3679",
+          "from_event": "evt_00078472",
+          "to_event": "evt_00078473",
+          "from_trajectory": "traj_000646",
+          "to_trajectory": "traj_000662",
+          "gap_s": 23.79202914237976
+        },
+        {
+          "gt_vehicle_id": "veh_006910",
+          "true_plate": "AP67QU_686",
+          "from_event": "evt_00037133",
+          "to_event": "evt_00037134",
+          "from_trajectory": "traj_001248",
+          "to_trajectory": "traj_001317",
+          "gap_s": 47.141075134277344
+        }
+      ],
+      "other": [
+        {
+          "gt_vehicle_id": "veh_000984",
+          "true_plate": "AP16MC__39",
+          "from_event": "evt_00005247",
+          "to_event": "evt_00005248",
+          "from_trajectory": "traj_000060",
+          "to_trajectory": "traj_000003",
+          "gap_s": 40.96090888977051
+        },
+        {
+          "gt_vehicle_id": "veh_006692",
+          "true_plate": "MH59A____3",
+          "from_event": "evt_00035979",
+          "to_event": "evt_00035980",
+          "from_trajectory": "traj_000450",
+          "to_trajectory": "traj_000444",
+          "gap_s": 38.10951495170593
+        },
+        {
+          "gt_vehicle_id": "veh_015300",
+          "true_plate": "BR28AS_637",
+          "from_event": "evt_00082079",
+          "to_event": "evt_00082080",
+          "from_trajectory": "traj_000733",
+          "to_trajectory": "traj_000700",
+          "gap_s": 38.488187074661255
+        },
+        {
+          "gt_vehicle_id": "veh_015300",
+          "true_plate": "BR28AS_637",
+          "from_event": "evt_00082080",
+          "to_event": "evt_00082081",
+          "from_trajectory": "traj_000700",
+          "to_trajectory": "traj_000733",
+          "gap_s": 120.35838794708252
+        },
+        {
+          "gt_vehicle_id": "veh_005947",
+          "true_plate": "MP50GR_751",
+          "from_event": "evt_00031937",
+          "to_event": "evt_00031938",
+          "from_trajectory": "traj_000751",
+          "to_trajectory": "traj_000761",
+          "gap_s": 45.27698802947998
+        }
+      ],
+      "plate_misread_at_break": [
+        {
+          "gt_vehicle_id": "veh_003169",
+          "true_plate": "TS15GU__95",
+          "from_event": "evt_00016834",
+          "to_event": "evt_00016835",
+          "from_trajectory": "traj_000098",
+          "to_trajectory": "traj_000110",
+          "gap_s": 57.79154396057129
+        },
+        {
+          "gt_vehicle_id": "veh_007177",
+          "true_plate": "WB30W_2624",
+          "from_event": "evt_00038522",
+          "to_event": "evt_00038523",
+          "from_trajectory": "traj_000939",
+          "to_trajectory": "traj_000914",
+          "gap_s": 28.429234981536865
+        },
+        {
+          "gt_vehicle_id": "veh_007680",
+          "true_plate": "MH64QL9636",
+          "from_event": "evt_00041244",
+          "to_event": "evt_00041245",
+          "from_trajectory": "traj_001405",
+          "to_trajectory": "traj_001400",
+          "gap_s": 25.21970510482788
+        },
+        {
+          "gt_vehicle_id": "veh_006479",
+          "true_plate": "RJ22OF_505",
+          "from_event": "evt_00034861",
+          "to_event": "evt_00034862",
+          "from_trajectory": "traj_001543",
+          "to_trajectory": "traj_001538",
+          "gap_s": 17.67312788963318
+        },
+        {
+          "gt_vehicle_id": "veh_006479",
+          "true_plate": "RJ22OF_505",
+          "from_event": "evt_00034862",
+          "to_event": "evt_00034863",
+          "from_trajectory": "traj_001538",
+          "to_trajectory": "traj_001543",
+          "gap_s": 32.127521991729736
+        }
+      ],
+      "missed_detection_gap": [
+        {
+          "gt_vehicle_id": "veh_006366",
+          "true_plate": "RJ69PA_598",
+          "from_event": "evt_00034244",
+          "to_event": "evt_00034245",
+          "from_trajectory": "traj_001300",
+          "to_trajectory": "traj_001329",
+          "gap_s": 207.23052406311035
+        },
+        {
+          "gt_vehicle_id": "veh_011259",
+          "true_plate": "HR82IV_502",
+          "from_event": "evt_00060308",
+          "to_event": "evt_00060309",
+          "from_trajectory": "traj_002497",
+          "to_trajectory": "traj_002517",
+          "gap_s": 100.1390061378479
+        },
+        {
+          "gt_vehicle_id": "veh_004956",
+          "true_plate": "WB18CH7405",
+          "from_event": "evt_00026556",
+          "to_event": "evt_00026557",
+          "from_trajectory": "traj_002474",
+          "to_trajectory": "traj_002540",
+          "gap_s": 389.1262390613556
+        },
+        {
+          "gt_vehicle_id": "veh_019573",
+          "true_plate": "DL93SM5401",
+          "from_event": "evt_00104908",
+          "to_event": "evt_00104909",
+          "from_trajectory": "traj_002623",
+          "to_trajectory": "traj_002612",
+          "gap_s": 171.78478693962097
+        },
+        {
+          "gt_vehicle_id": "veh_003044",
+          "true_plate": "MP77W_8334",
+          "from_event": "evt_00016167",
+          "to_event": "evt_00016168",
+          "from_trajectory": "traj_003594",
+          "to_trajectory": "traj_003654",
+          "gap_s": 50.3661150932312
+        }
+      ]
+    }
+  },
+  "headline_answer": "SUTRA predicts 18483 trajectories for 19995 true vehicles (over-merging). Of 1892 wrongly-made adjacent links across 1630 merged trajectories (3505 true vehicles involved), the dominant cause is 'other' (84.3% of transitions). Of the wrong links with recorded evidence, 57.6% already have a NEGATIVE total_log_odds even under the current (buggy, over-generous) prior -- meaning the solver chose the least-bad available option, not a genuinely confident wrong link -- and 83.9% of the REMAINING currently-accepted (total_log_odds>=0) wrong links would flip negative under the corrected mean-pool-size prior alone: altogether an approximate 93.2% of all wrongly-made links are either already a forced least-bad choice or a direct artifact of the fixed-prior bug, not a genuine 3-channel evidence failure. Separately, 380 true vehicles are fragmented across >1 predicted trajectory (587 breaks total); the dominant identifiable cause is 'other' (55.5% of breaks)."
+}

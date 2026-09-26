@@ -28,7 +28,15 @@ from rapidfuzz.distance import Levenshtein
 
 from engine.contracts.events import DetectionEvent
 
-DEFAULT_CANDIDATE_BUDGET = 500
+# Must sit ABOVE the gate's normal output so blocking stays an overflow valve
+# (architecture.md §7: plate-based filtering must never be the default path,
+# or a badly misread plate would never become a candidate). The gate's
+# congestion tail floor (engine.association.gating.CONGESTION_TAIL_FACTOR)
+# raised normal candidates/read from ~218 to ~1,000 (peak-hour mean ~1,700),
+# at which the old budget of 500 engaged on ~74% of reads. Note: blocking is
+# not in the production solve path (window.py scores every gated candidate);
+# this module is kept as a documented overflow mechanism.
+DEFAULT_CANDIDATE_BUDGET = 4000
 DEFAULT_MAX_EDIT_DISTANCE = 3
 # Above this many overflowing candidates, use the deletion-index fast path
 # to pre-filter before ranking; below it, an exhaustive rapidfuzz scan is

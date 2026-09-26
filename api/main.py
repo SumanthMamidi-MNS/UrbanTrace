@@ -26,6 +26,7 @@ from api.routers import analytics as analytics_router
 from api.routers import core as core_router
 from api.routers import eval as eval_router
 from api.routers import replay as replay_router
+from api.routers import watchlist as watchlist_router
 from api.routers import ws as ws_router
 from api.state import load_app_state
 
@@ -63,6 +64,7 @@ app.include_router(analytics_router.router)
 app.include_router(alerts_router.router)
 app.include_router(eval_router.router)
 app.include_router(replay_router.router)
+app.include_router(watchlist_router.router)
 app.include_router(ws_router.router)
 
 if DIST_DIR.exists():

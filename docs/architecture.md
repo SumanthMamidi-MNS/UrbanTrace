@@ -89,6 +89,8 @@ L2  PERCEPTION  vehicle detect -> in-camera track -> best-shot -> plate OCR (per
 L1  INGEST  SimSource | VideoSource | CsvReplaySource  --> canonical DetectionEvent
 ```
 
+**L2 perception (the PRD's OCR module), as built:** plate detector (YOLO, approved pretrained plate weights) → plate crop → **CRNN + CTC recogniser** → CTC per-timestep probabilities mapped onto the 10-slot canonical plate by the plate grammar, keeping background mass on every character → `DetectionEvent` files in the standard on-disk format. It runs in its own environment (`C:\sutra-data\venv-ocr`, PyTorch + CUDA) and hands the engine nothing but event files, so the engine never imports PyTorch. Pre-trained on synthetic Indian HSRP plates rendered with the PRD's conditions (angle, blur, low light, glare, dirt, rain, low resolution); fine-tuned and **measured on a held-out real Indian plate set** — only that measurement supports the >90% claim.
+
 **The pivotal decision: L1 and L3 are separated by a hard contract.** The engine consumes `DetectionEvent`s and neither knows nor cares whether they came from a simulator or a real camera.
 
 ```python

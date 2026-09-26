@@ -23,6 +23,14 @@ dependencies = [
 dev = [
     "pytest",
     "ruff",
+    # Needed only to run tests/test_synth_plate_safety.py (renders plate
+    # images to verify the OCR renderer's character-containment guarantee)
+    # under the main venv, per the reviewer's explicit requirement that
+    # this test -- unlike the training/inference code -- run without torch.
+    # Both are lightweight, CPU-only, non-CUDA packages, unlike torch, which
+    # remains confined to the separate OCR venv.
+    "pillow",
+    "opencv-python-headless",
 ]
 
 [build-system]
